@@ -1,11 +1,3 @@
-/* ==========================================================
-   Molina – Settings view
-   Uses the colour tokens defined in markets.css (:root).
-   Everything is scoped to the settings <main class="page"> so
-   it cannot collide with the other views. Class names are
-   settings-/usage-/theme- prefixed for the same reason.
-   ========================================================== */
-
 .page:has(> .settings-head) {
   h1,
   h2,

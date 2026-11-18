@@ -1,4 +1,4 @@
-.page:has(> .article-grid) {
+.page:has(.article-grid) {
   h1,
   h2,
   p,
@@ -108,15 +108,18 @@
     background: currentColor;
   }
 
-  .article__hero {
-    display: grid;
-    place-items: center;
-    height: 222px;
-    margin-top: 22px;
-    border-radius: 12px;
-    background: var(--bg-inset);
-    color: var(--text-muted);
-  }
+.article__hero {
+  position: relative;
+  width: 100%;
+  height: 222px;               
+  margin-top: 22px;
+  border-radius: 12px;
+  background: var(--bg-inset);
+  color: var(--text-muted);
+  overflow: hidden;              
+  display: grid;
+  place-items: center;
+}
 
   .article__body {
     margin-top: 28px;
@@ -136,6 +139,20 @@
     line-height: 1.3;
     letter-spacing: -0.01em;
     color: var(--text);
+  }
+
+  .article__source {
+    margin-top: 22px;
+    font-size: 15px;
+  }
+
+  .article__source a {
+    color: var(--accent-soft);
+    font-weight: 600;
+  }
+
+  .article__source a:hover {
+    text-decoration: underline;
   }
 
   /* ---------- Side cards ---------- */
@@ -220,6 +237,19 @@
     border-color: var(--up-border);
   }
 
+  .article__hero {
+  position: relative;
+}
+
+.article__hero:not(:has(img))::after {
+  content: "No image available";
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
   .art-dir--down {
     color: var(--down);
     background: var(--down-bg);
@@ -276,3 +306,4 @@
     .article__body { font-size: 17px; }
   }
 }
+

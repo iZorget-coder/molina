@@ -1,14 +1,3 @@
-/* ==========================================================
-   Molina – AI chat view
-   Uses the colour tokens defined in markets.css (:root).
-   Everything is scoped to the AI <main class="page"> so it
-   cannot collide with the other views. Class names are
-   ai- prefixed for the same reason.
-
-   The view fills the screen under the nav. If your nav is not
-   70px tall, set --nav-h (e.g. in app.css) to its real height.
-   ========================================================== */
-
 .page:has(> .ai-layout) {
   h1,
   h2,

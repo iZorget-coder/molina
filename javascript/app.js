@@ -1,3 +1,5 @@
+import { loadNews, bindFilters } from './news.js';
+
 (function () {
   const container = document.getElementById('view-container');
   const cache = {};
@@ -5,19 +7,65 @@
   let requestToken = 0;
 
   const VALID = ['dashboard', 'watchlist', 'markets', 'news', 'settings', 'ai', 'article'];
-const NAV_TAB = { ai: 'markets', article: 'news' };
-const navTab = NAV_TAB[name] || name;
-document.querySelectorAll('.nav__link').forEach(a => {
-  a.classList.toggle('is-active', a.dataset.tab === navTab);
-});
-
-
+  const NAV_TAB = { ai: 'markets', article: 'news' };
 
   // ---- Per-view hooks ----
   const hooks = {
     markets: renderCandles,
     watchlist: bindWatchlistFilters,
+    news: initNews,
+    article: renderArticle,
   };
+
+  function initNews() {
+    loadNews();
+    bindFilters();
+  }
+
+  function renderArticle() {
+    const data = history.state?.article
+      || (() => {
+        try { return JSON.parse(sessionStorage.getItem('currentArticle') || 'null'); }
+        catch { return null; }
+      })();
+
+    const tagEl = document.getElementById('article-tag');
+    const titleEl = document.getElementById('article-title');
+    const metaEl = document.getElementById('article-meta');
+    const bodyEl = document.getElementById('article-body');
+    const sourceEl = document.getElementById('article-source');
+    const hero = document.querySelector('.article__hero');
+
+    if (!data || !titleEl) {
+      if (titleEl) titleEl.textContent = 'Article not found';
+      if (bodyEl) bodyEl.innerHTML =
+        '<p>This story could not be loaded. Return to the <a href="#news">news feed</a>.</p>';
+      return;
+    }
+
+    if (tagEl) tagEl.textContent = data.category.charAt(0).toUpperCase() + data.category.slice(1);
+    if (titleEl) titleEl.textContent = data.title;
+    if (metaEl) metaEl.innerHTML =
+      `<strong>${data.source || 'Molina Wire'}</strong> <i aria-hidden="true"></i> <time>${data.published || ''}</time>`;
+    if (bodyEl) bodyEl.innerHTML =
+      `<p>${data.description || 'No preview available for this story.'}</p>`;
+
+    if (data.image && hero) {
+      const img = new Image();
+      img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
+      img.onload = () => { hero.innerHTML = ''; hero.appendChild(img); };
+      img.src = data.image;
+    }
+
+    if (data.url && sourceEl) {
+      const link = sourceEl.querySelector('a');
+      if (link) {
+        link.href = data.url;
+        sourceEl.hidden = false;
+      }
+    }
+  }
 
   function renderCandles() {
     const svg = document.getElementById('candles');
@@ -95,8 +143,9 @@ document.querySelectorAll('.nav__link').forEach(a => {
 
     const token = ++requestToken;
 
+    const navTab = NAV_TAB[name] || name;
     document.querySelectorAll('.nav__link').forEach(a => {
-      a.classList.toggle('is-active', a.dataset.tab === name);
+      a.classList.toggle('is-active', a.dataset.tab === navTab);
     });
 
     if (cache[name]) {
@@ -127,6 +176,25 @@ document.querySelectorAll('.nav__link').forEach(a => {
   }
 
   document.addEventListener('click', (e) => {
+    // Story click → route to #article with payload in state
+    const story = e.target.closest('a.story[data-article]');
+    if (story) {
+      e.preventDefault();
+      let payload = null;
+      try {
+        payload = JSON.parse(decodeURIComponent(story.dataset.article));
+      } catch (err) {
+        console.error('Bad article payload', err);
+      }
+      if (payload) {
+        sessionStorage.setItem('currentArticle', JSON.stringify(payload));
+        history.pushState({ view: 'article', article: payload }, '', '#article');
+        loadView('article');
+      }
+      return;
+    }
+
+    // Generic hash navigation
     const link = e.target.closest('a[href^="#"]');
     if (!link) return;
 
@@ -138,14 +206,20 @@ document.querySelectorAll('.nav__link').forEach(a => {
     loadView(name);
   });
 
-  window.addEventListener('popstate', () => {
-    loadView(location.hash.slice(1) || 'dashboard');
+  window.addEventListener('popstate', (e) => {
+    const name = location.hash.slice(1) || 'dashboard';
+    if (name === 'article' && !e.state?.article) {
+     
+    }
+    loadView(name);
   });
 
-  loadView(location.hash.slice(1) || 'dashboard');
-
-
-  //page refresh to dashboard on first load
-  history.replaceState({ view: 'dashboard' }, '', '#dashboard');
-  loadView('dashboard');
+  // Initial load
+  const initial = location.hash.slice(1);
+  if (initial && VALID.includes(initial)) {
+    loadView(initial);
+  } else {
+    history.replaceState({ view: 'dashboard' }, '', '#dashboard');
+    loadView('dashboard');
+  }
 })();

@@ -3,11 +3,11 @@
   if (!container) return;
 
   const links = [
-    { label: 'Dashboard', href: '#dashboard', key: 'dashboard' },
-    { label: 'Watchlist', href: '#watchlist', key: 'watchlist' },
-    { label: 'Markets',   href: '#markets',   key: 'markets'   },
-    { label: 'News',      href: '#news',      key: 'news'      },
-    { label: 'Settings',  href: '#settings',  key: 'settings'  },
+    { label: 'Dashboard', href: '/pages/app.html#dashboard', key: 'dashboard' },
+{ label: 'Watchlist', href: '/pages/app.html#watchlist', key: 'watchlist' },
+{ label: 'Markets',   href: '/pages/app.html#markets',   key: 'markets'   },
+{ label: 'News',      href: '/pages/app.html#news',      key: 'news'      },
+{ label: 'Settings',  href: '/pages/app.html#settings',  key: 'settings'  },
   ];
 
   const navLinks = links
