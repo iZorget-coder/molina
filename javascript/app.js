@@ -1,4 +1,5 @@
-import { loadNews, bindFilters } from './news.js';
+import { loadNews, bindFilters, loadDashboardNews } from './news.js';
+import { bindWatchlistPage, bindDashboardWatchlist, loadDashboardCards } from './watchlist.js';
 
 (function () {
   const container = document.getElementById('view-container');
@@ -9,13 +10,19 @@ import { loadNews, bindFilters } from './news.js';
   const VALID = ['dashboard', 'watchlist', 'markets', 'news', 'settings', 'ai', 'article'];
   const NAV_TAB = { ai: 'markets', article: 'news' };
 
-  // ---- Per-view hooks ----
   const hooks = {
+    dashboard: initDashboard,
     markets: renderCandles,
-    watchlist: bindWatchlistFilters,
+    watchlist: bindWatchlistPage,
     news: initNews,
     article: renderArticle,
   };
+
+  function initDashboard() {
+    loadDashboardNews();
+    bindDashboardWatchlist();
+    loadDashboardCards();
+  }
 
   function initNews() {
     loadNews();
@@ -35,15 +42,19 @@ import { loadNews, bindFilters } from './news.js';
     const bodyEl = document.getElementById('article-body');
     const sourceEl = document.getElementById('article-source');
     const hero = document.querySelector('.article__hero');
+    const moreList = document.getElementById('article-more');
+    const moreHeading = document.getElementById('art-more');
 
     if (!data || !titleEl) {
       if (titleEl) titleEl.textContent = 'Article not found';
       if (bodyEl) bodyEl.innerHTML =
         '<p>This story could not be loaded. Return to the <a href="#news">news feed</a>.</p>';
+      if (moreList) moreList.innerHTML = '';
       return;
     }
 
-    if (tagEl) tagEl.textContent = data.category.charAt(0).toUpperCase() + data.category.slice(1);
+    const categoryLabel = data.category.charAt(0).toUpperCase() + data.category.slice(1);
+    if (tagEl) tagEl.textContent = categoryLabel;
     if (titleEl) titleEl.textContent = data.title;
     if (metaEl) metaEl.innerHTML =
       `<strong>${data.source || 'Molina Wire'}</strong> <i aria-hidden="true"></i> <time>${data.published || ''}</time>`;
@@ -53,7 +64,6 @@ import { loadNews, bindFilters } from './news.js';
     if (data.image && hero) {
       const img = new Image();
       img.alt = '';
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;';
       img.onload = () => { hero.innerHTML = ''; hero.appendChild(img); };
       img.src = data.image;
     }
@@ -63,6 +73,38 @@ import { loadNews, bindFilters } from './news.js';
       if (link) {
         link.href = data.url;
         sourceEl.hidden = false;
+      }
+    }
+
+    if (moreHeading) moreHeading.textContent = `More from ${categoryLabel}`;
+
+    if (moreList) {
+      const siblings = Array.isArray(data.siblings) ? data.siblings : [];
+      const others = siblings.filter(s => s.title && s.title !== data.title).slice(0, 3);
+
+      if (!others.length) {
+        moreList.innerHTML = '<li><p class="view-empty">No related stories.</p></li>';
+      } else {
+        moreList.innerHTML = others.map(sib => {
+          const sibPayload = encodeURIComponent(JSON.stringify({
+            title: sib.title,
+            source: 'Currents',
+            published: sib.published || '',
+            description: sib.description || '',
+            url: sib.url || '',
+            image: sib.image || '',
+            category: data.category,
+            siblings,
+          }));
+          return `
+            <li>
+              <a href="#article" class="article-more" data-article="${sibPayload}">
+                <strong>${sib.title}</strong>
+                <span>Currents · ${sib.published || ''}</span>
+              </a>
+            </li>
+          `;
+        }).join('');
       }
     }
   }
@@ -121,22 +163,6 @@ import { loadNews, bindFilters } from './news.js';
     }
   }
 
-  function bindWatchlistFilters() {
-    const chips = document.querySelectorAll('.chip[data-filter]');
-    const rows  = document.querySelectorAll('.table tbody tr');
-
-    chips.forEach(chip => {
-      chip.addEventListener('click', () => {
-        chips.forEach(c => c.classList.remove('is-active'));
-        chip.classList.add('is-active');
-        const f = chip.dataset.filter;
-        rows.forEach(r => {
-          r.hidden = f !== 'all' && r.dataset.category !== f;
-        });
-      });
-    });
-  }
-
   async function loadView(name) {
     if (!VALID.includes(name)) name = 'dashboard';
     if (name === currentName) return;
@@ -176,8 +202,7 @@ import { loadNews, bindFilters } from './news.js';
   }
 
   document.addEventListener('click', (e) => {
-    // Story click → route to #article with payload in state
-    const story = e.target.closest('a.story[data-article]');
+    const story = e.target.closest('a[data-article]');
     if (story) {
       e.preventDefault();
       let payload = null;
@@ -189,12 +214,12 @@ import { loadNews, bindFilters } from './news.js';
       if (payload) {
         sessionStorage.setItem('currentArticle', JSON.stringify(payload));
         history.pushState({ view: 'article', article: payload }, '', '#article');
+        currentName = null;
         loadView('article');
       }
       return;
     }
 
-    // Generic hash navigation
     const link = e.target.closest('a[href^="#"]');
     if (!link) return;
 
@@ -206,15 +231,11 @@ import { loadNews, bindFilters } from './news.js';
     loadView(name);
   });
 
-  window.addEventListener('popstate', (e) => {
+  window.addEventListener('popstate', () => {
     const name = location.hash.slice(1) || 'dashboard';
-    if (name === 'article' && !e.state?.article) {
-     
-    }
     loadView(name);
   });
 
-  // Initial load
   const initial = location.hash.slice(1);
   if (initial && VALID.includes(initial)) {
     loadView(initial);

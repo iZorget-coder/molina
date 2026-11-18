@@ -499,6 +499,17 @@ input {
   transition: background 0.15s, border-color 0.15s;
 }
 
+.news__item a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.news__item a:hover h3 {
+  color: var(--accent-soft);
+}
+
+
 .news__item:hover {
   background: var(--bg-hover);
   border-color: #2a3862;

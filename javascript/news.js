@@ -1,14 +1,25 @@
-// javascript/news.js
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from './firebase.js';
+import { db, auth, onAuthStateChanged } from './firebase.js';
 
 const API_KEY = import.meta.env.VITE_CURRENTS_API_KEY;
 const ENDPOINT = 'https://api.currentsapi.services/v1/latest-news?language=en';
 
 let cachedArticles = null;
+let authReady = null;
+
+function whenAuthReady() {
+  if (authReady) return authReady;
+  authReady = new Promise(resolve => {
+    const unsub = onAuthStateChanged(auth, user => {
+      unsub();
+      resolve(user);
+    });
+  });
+  return authReady;
+}
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10); 
+  return new Date().toISOString().slice(0, 10);
 }
 
 function mapCategory(categories) {
@@ -28,7 +39,7 @@ function timeAgo(dateString) {
   return `${Math.floor(hrs / 24)} d ago`;
 }
 
-function storyMarkup(article) {
+function storyMarkup(article, siblings) {
   const category = mapCategory(article.category);
   const published = timeAgo(article.published);
   const payload = encodeURIComponent(JSON.stringify({
@@ -39,6 +50,13 @@ function storyMarkup(article) {
     url: article.url || '',
     image: article.image || '',
     category,
+    siblings: (siblings || []).map(s => ({
+      title: s.title || '',
+      description: s.description || '',
+      url: s.url || '',
+      image: s.image || '',
+      published: timeAgo(s.published),
+    })),
   }));
 
   const fallbackSvg = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>`;
@@ -75,12 +93,12 @@ function renderArticles(articles) {
 
   if (financeList) {
     financeList.innerHTML = finance.length
-      ? finance.map(storyMarkup).join('')
+      ? finance.map(a => storyMarkup(a, finance)).join('')
       : '<li><p class="view-empty">No finance stories available.</p></li>';
   }
   if (techList) {
     techList.innerHTML = tech.length
-      ? tech.map(storyMarkup).join('')
+      ? tech.map(a => storyMarkup(a, tech)).join('')
       : '<li><p class="view-empty">No tech stories available.</p></li>';
   }
 
@@ -128,10 +146,9 @@ export async function loadNews() {
     return;
   }
 
-  // Wait for Firebase Auth to resolve, otherwise auth.currentUser may be null
-  const user = auth.currentUser;
+  const user = await whenAuthReady();
+
   if (!user) {
-    // Not signed in — fall back to a live fetch with no cache
     setLoading();
     try {
       const articles = await fetchFromCurrents();
@@ -167,6 +184,82 @@ export async function loadNews() {
   } catch (err) {
     console.error(err);
     setError();
+  }
+}
+
+function dashboardItemMarkup(article, siblings) {
+  const published = timeAgo(article.published);
+  const title = article.title || 'Untitled';
+  const source = 'Currents';
+  const payload = encodeURIComponent(JSON.stringify({
+    title: article.title || '',
+    source,
+    published,
+    description: article.description || '',
+    url: article.url || '',
+    image: article.image || '',
+    category: mapCategory(article.category),
+    siblings: (siblings || []).map(s => ({
+      title: s.title || '',
+      description: s.description || '',
+      url: s.url || '',
+      image: s.image || '',
+      published: timeAgo(s.published),
+    })),
+  }));
+
+  return `
+    <li class="news__item">
+      <a href="#article" data-article="${payload}">
+        <h3>${title}</h3>
+        <div class="news__meta"><span>${source}</span><span>${published}</span></div>
+      </a>
+    </li>
+  `;
+}
+
+export async function loadDashboardNews() {
+  const list = document.getElementById('dashboard-news-list');
+  if (!list) return;
+
+  if (cachedArticles) {
+    list.innerHTML = cachedArticles.slice(0, 5)
+      .map(a => dashboardItemMarkup(a, cachedArticles))
+      .join('');
+    return;
+  }
+
+  const user = await whenAuthReady();
+
+  list.innerHTML = '<li class="news__item"><h3>Loading…</h3></li>';
+
+  try {
+    let articles;
+
+    if (user) {
+      const ref = doc(db, 'newsCache', user.uid, 'days', todayKey());
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        articles = snap.data().articles || [];
+      } else {
+        articles = await fetchFromCurrents();
+        await setDoc(ref, {
+          date: todayKey(),
+          articles,
+          fetchedAt: new Date().toISOString(),
+        });
+      }
+    } else {
+      articles = await fetchFromCurrents();
+    }
+
+    cachedArticles = articles;
+    list.innerHTML = articles.slice(0, 5)
+      .map(a => dashboardItemMarkup(a, articles))
+      .join('');
+  } catch (err) {
+    console.error(err);
+    list.innerHTML = '<li class="news__item"><h3>News unavailable.</h3></li>';
   }
 }
 
