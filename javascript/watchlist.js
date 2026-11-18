@@ -1,3 +1,4 @@
+// javascript/watchlist.js
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth, onAuthStateChanged } from './firebase.js';
 
@@ -21,7 +22,7 @@ function whenAuthReady() {
 }
 
 function userRef(uid) {
-  return doc(db, 'watchlists', uid);
+  return doc(db, 'users', uid);
 }
 
 async function fetchWatchlist() {
@@ -36,11 +37,14 @@ async function fetchWatchlist() {
   const ref = userRef(user.uid);
   const snap = await getDoc(ref);
 
-  if (snap.exists()) {
-    cachedSymbols = snap.data().symbols || ['SPX'];
+  if (snap.exists() && Array.isArray(snap.data().watchlist)) {
+    cachedSymbols = snap.data().watchlist;
   } else {
     cachedSymbols = ['SPX'];
-    await setDoc(ref, { symbols: cachedSymbols, updatedAt: new Date().toISOString() });
+    await setDoc(ref, {
+      watchlist: cachedSymbols,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
   }
   return cachedSymbols;
 }
@@ -50,7 +54,7 @@ async function saveWatchlist(symbols) {
   cachedSymbols = symbols;
   if (!user) return;
   await setDoc(userRef(user.uid), {
-    symbols,
+    watchlist: symbols,
     updatedAt: new Date().toISOString(),
   }, { merge: true });
 }
@@ -160,7 +164,7 @@ function sparkPolyline(market) {
 
   for (let i = 0; i < 17; i++) {
     const x = 2 + (i * 196) / 16;
-    if (market.dir === 'up')       y -= rand() * 2.5;
+    if (market.dir === 'up')        y -= rand() * 2.5;
     else if (market.dir === 'down') y += rand() * 2.5;
     else                            y  = 40 + Math.sin(i * 1.7 + seedBase) * 10;
     const clamped = Math.max(2, Math.min(54, y));

@@ -2,7 +2,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth, onAuthStateChanged } from './firebase.js';
 
 const API_KEY = import.meta.env.VITE_CURRENTS_API_KEY;
-const ENDPOINT = 'https://api.currentsapi.services/v1/latest-news?language=en';
+const ENDPOINT = 'https://api.currentsapi.services/v1/latest-news?language=en&category=technology,business';
 
 let cachedArticles = null;
 let authReady = null;
@@ -10,12 +10,13 @@ let authReady = null;
 function whenAuthReady() {
   if (authReady) return authReady;
   authReady = new Promise(resolve => {
-    const unsub = onAuthStateChanged(auth, user => {
-      unsub();
-      resolve(user);
-    });
+    const unsub = onAuthStateChanged(auth, user => { unsub(); resolve(user); });
   });
   return authReady;
+}
+
+function userRef(uid) {
+  return doc(db, 'users', uid);
 }
 
 function todayKey() {
@@ -164,21 +165,23 @@ export async function loadNews() {
   setLoading();
 
   try {
-    const ref = doc(db, 'newsCache', user.uid, 'days', todayKey());
+    const ref = userRef(user.uid);
     const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : {};
+    const today = todayKey();
 
-    if (snap.exists()) {
-      cachedArticles = snap.data().articles || [];
+    if (data.newsDate === today && Array.isArray(data.newsArticles)) {
+      cachedArticles = data.newsArticles;
       renderArticles(cachedArticles);
       return;
     }
 
     const articles = await fetchFromCurrents();
     await setDoc(ref, {
-      date: todayKey(),
-      articles,
-      fetchedAt: new Date().toISOString(),
-    });
+      newsDate: today,
+      newsArticles: articles,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
     cachedArticles = articles;
     renderArticles(articles);
   } catch (err) {
@@ -237,17 +240,20 @@ export async function loadDashboardNews() {
     let articles;
 
     if (user) {
-      const ref = doc(db, 'newsCache', user.uid, 'days', todayKey());
+      const ref = userRef(user.uid);
       const snap = await getDoc(ref);
-      if (snap.exists()) {
-        articles = snap.data().articles || [];
+      const data = snap.exists() ? snap.data() : {};
+      const today = todayKey();
+
+      if (data.newsDate === today && Array.isArray(data.newsArticles)) {
+        articles = data.newsArticles;
       } else {
         articles = await fetchFromCurrents();
         await setDoc(ref, {
-          date: todayKey(),
-          articles,
-          fetchedAt: new Date().toISOString(),
-        });
+          newsDate: today,
+          newsArticles: articles,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
       }
     } else {
       articles = await fetchFromCurrents();
