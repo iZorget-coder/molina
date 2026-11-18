@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Molina — daily market forecasts, watchlist and news.">
+  <title>Molina</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/dashboard.css">
+  <link rel="stylesheet" href="/styles/watchlist.css">
+  <link rel="stylesheet" href="/styles/markets.css">
+  <link rel="stylesheet" href="/styles/app.css">
+  <link rel="stylesheet" href="/styles/news.css">
+  <link rel="stylesheet" href="/styles/settings.css">
+  <link rel="stylesheet" href="/styles/ai.css">
+  <link rel="stylesheet" href="/styles/article.css">
+  <script defer src="/javascript/nav.js"></script>
+  <script defer src="/javascript/app.js"></script>
+
+
+<div id="auth-curtain" style="position:fixed;inset:0;background:#f1f5f9;z-index:9999;"></div>
+<script type="module">
+  import { auth, onAuthStateChanged } from '../javascript/firebase.js';
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      window.location.replace('/index.html');
+    } else {
+      document.getElementById('auth-curtain').remove();
+    }
+  });
+</script>
+  
+</head>
+<body>
+
+  <div id="nav-container"></div>
+
+  
+  <div id="view-container"></div>
+
+</body>
+</html>

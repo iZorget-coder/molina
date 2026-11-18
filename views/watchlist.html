@@ -1,0 +1,153 @@
+<main class="page">
+
+  <div class="page__head">
+    <div>
+      <h1>Watchlist</h1>
+      <p>5 markets · Forecasts for Mon 16 Nov 2026</p>
+    </div>
+    <button class="btn-primary">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add market
+    </button>
+  </div>
+
+  <section class="stats">
+    <div class="stat">
+      <span class="stat__icon stat__icon--up">▲</span>
+      <div>
+        <div class="stat__num">2</div>
+        <div class="stat__label">Markets forecast UP</div>
+      </div>
+    </div>
+    <div class="stat">
+      <span class="stat__icon stat__icon--down">▼</span>
+      <div>
+        <div class="stat__num">2</div>
+        <div class="stat__label">Markets forecast DOWN</div>
+      </div>
+    </div>
+    <div class="stat">
+      <span class="stat__icon stat__icon--flat">◆</span>
+      <div>
+        <div class="stat__num">1</div>
+        <div class="stat__label">Market in CONSOLIDATION</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="filters" role="tablist">
+    <button class="chip is-active" data-filter="all" role="tab">All</button>
+    <button class="chip" data-filter="Index" role="tab">Indices</button>
+    <button class="chip" data-filter="Commodity" role="tab">Commodities</button>
+    <button class="chip" data-filter="FX" role="tab">FX</button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th class="col-market">Market</th>
+          <th class="col-symbol">Symbol</th>
+          <th class="col-close num">Last close</th>
+          <th class="col-pred">Prediction</th>
+          <th class="col-conf">Confidence</th>
+          <th class="col-change num">24h change</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-category="Index">
+          <td class="col-market">
+            <div class="market__name">S&amp;P 500</div>
+            <div class="market__type">Index</div>
+          </td>
+          <td class="col-symbol">SPX</td>
+          <td class="col-close num">5,892.40</td>
+          <td class="col-pred"><span class="tag tag--up">▲ UP</span></td>
+          <td class="col-conf">
+            <div class="conf">
+              <div class="bar"><div class="bar__fill" style="width:62%"></div></div>
+              <span>62%</span>
+            </div>
+          </td>
+          <td class="col-change num up">+0.42%</td>
+        </tr>
+
+        <tr data-category="Index">
+          <td class="col-market">
+            <div class="market__name">NASDAQ</div>
+            <div class="market__type">Index</div>
+          </td>
+          <td class="col-symbol">NDX</td>
+          <td class="col-close num">20,431.18</td>
+          <td class="col-pred"><span class="tag tag--down">▼ DOWN</span></td>
+          <td class="col-conf">
+            <div class="conf">
+              <div class="bar"><div class="bar__fill" style="width:58%"></div></div>
+              <span>58%</span>
+            </div>
+          </td>
+          <td class="col-change num down">-0.71%</td>
+        </tr>
+
+        <tr data-category="Index">
+          <td class="col-market">
+            <div class="market__name">DOW JONES</div>
+            <div class="market__type">Index</div>
+          </td>
+          <td class="col-symbol">DJI</td>
+          <td class="col-close num">43,128.65</td>
+          <td class="col-pred"><span class="tag tag--flat">◆ CONSOLIDATION</span></td>
+          <td class="col-conf">
+            <div class="conf">
+              <div class="bar"><div class="bar__fill" style="width:51%"></div></div>
+              <span>51%</span>
+            </div>
+          </td>
+          <td class="col-change num neutral">+0.05%</td>
+        </tr>
+
+        <tr data-category="Commodity">
+          <td class="col-market">
+            <div class="market__name">Gold</div>
+            <div class="market__type">Commodity</div>
+          </td>
+          <td class="col-symbol">XAUUSD</td>
+          <td class="col-close num">2,447.85</td>
+          <td class="col-pred"><span class="tag tag--up">▲ UP</span></td>
+          <td class="col-conf">
+            <div class="conf">
+              <div class="bar"><div class="bar__fill" style="width:62%"></div></div>
+              <span>62%</span>
+            </div>
+          </td>
+          <td class="col-change num up">+0.88%</td>
+        </tr>
+
+        <tr data-category="FX">
+          <td class="col-market">
+            <div class="market__name">US Dollar Index</div>
+            <div class="market__type">FX</div>
+          </td>
+          <td class="col-symbol">DXY</td>
+          <td class="col-close num">104.27</td>
+          <td class="col-pred"><span class="tag tag--down">▼ DOWN</span></td>
+          <td class="col-conf">
+            <div class="conf">
+              <div class="bar"><div class="bar__fill" style="width:55%"></div></div>
+              <span>55%</span>
+            </div>
+          </td>
+          <td class="col-change num down">-0.31%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer class="key">
+    <strong>Key</strong>
+    <span><i class="up">▲</i> UP: higher close more likely</span>
+    <span><i class="down">▼</i> DOWN: lower close more likely</span>
+    <span><i class="flat-icon">◆</i> CONSOLIDATION: range-bound</span>
+  </footer>
+
+</main>

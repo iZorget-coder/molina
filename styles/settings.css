@@ -1,0 +1,360 @@
+/* ==========================================================
+   Molina – Settings view
+   Uses the colour tokens defined in markets.css (:root).
+   Everything is scoped to the settings <main class="page"> so
+   it cannot collide with the other views. Class names are
+   settings-/usage-/theme- prefixed for the same reason.
+   ========================================================== */
+
+.page:has(> .settings-head) {
+  h1,
+  h2,
+  p,
+  ul {
+    margin: 0;
+    padding: 0;
+  }
+
+  ul {
+    list-style: none;
+  }
+
+  button {
+    font-family: inherit;
+  }
+
+  /* ---------- Page ---------- */
+  & {
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+  }
+
+  /* ---------- Header ---------- */
+  .settings-head {
+    margin-bottom: 24px;
+  }
+
+  .settings-head h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+
+  .settings-head p {
+    margin-top: 2px;
+    font-size: 16px;
+    color: var(--text-light);
+  }
+
+  /* ---------- Cards ---------- */
+  .settings-card {
+    margin-bottom: 14px;
+    padding: 22px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .settings-card h2 {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .settings-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .settings-muted {
+    font-size: 14px;
+    color: var(--text-light);
+  }
+
+  /* ---------- Buttons ---------- */
+  .settings-btn {
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: #1e2842;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .settings-btn:hover {
+    background: #26324f;
+  }
+
+  .settings-btn--danger {
+    border-color: var(--down-border);
+    background: transparent;
+    color: var(--down);
+  }
+
+  .settings-btn--danger:hover {
+    background: var(--down-bg);
+  }
+
+  .settings-btn--wide {
+    margin-top: 6px;
+    height: 40px;
+    padding: 0 28px;
+    border-color: var(--border);
+    background: transparent;
+    color: var(--text-light);
+  }
+
+  .settings-btn--wide:hover {
+    background: var(--bg-card);
+    color: var(--text);
+  }
+
+  .settings-btn:focus-visible {
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Account rows ---------- */
+  .settings-rows {
+    margin-top: 14px;
+  }
+
+  .settings-row {
+    display: grid;
+    grid-template-columns: 106px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0;
+    min-height: 54px;
+    border-top: 1px solid var(--border);
+  }
+
+  .settings-row__label {
+    font-size: 15px;
+    color: var(--text-muted);
+  }
+
+  .settings-row__value {
+    font-size: 16px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  .settings-row__value--dots {
+    letter-spacing: 0.12em;
+  }
+
+  .settings-row__value--muted {
+    font-weight: 400;
+    color: var(--text-light);
+  }
+
+  /* ---------- Toggle rows ---------- */
+  .settings-toggles {
+    margin-top: 14px;
+  }
+
+  .settings-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 10px 0;
+  }
+
+  .settings-toggles .settings-toggle {
+    border-top: 1px solid var(--border);
+  }
+
+  .settings-toggle--first {
+    padding: 8px 0 0;
+  }
+
+  .settings-toggle__text {
+    min-width: 0;
+  }
+
+  .settings-toggle__text strong {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .settings-toggle__text p {
+    margin-top: 1px;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  /* switch: a real checkbox, so it works with keyboard and screen readers */
+  .settings-switch {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+    width: 48px;
+    height: 26px;
+  }
+
+  .settings-switch input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .settings-switch__track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: #2a3350;
+    pointer-events: none;
+    transition: background 0.15s;
+  }
+
+  .settings-switch__track::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #9aa3b8;
+    transition: transform 0.15s, background 0.15s;
+  }
+
+  .settings-switch input:checked + .settings-switch__track {
+    background: var(--accent);
+  }
+
+  .settings-switch input:checked + .settings-switch__track::after {
+    transform: translateX(22px);
+    background: #fff;
+  }
+
+  .settings-switch input:focus-visible + .settings-switch__track {
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 2px;
+  }
+
+  /* ---------- AI chat usage ---------- */
+  .usage__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .usage__row strong {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .usage__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--track);
+    overflow: hidden;
+  }
+
+  .usage__bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+  }
+
+  /* ---------- Theme ---------- */
+  .theme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .theme-opt {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 48px;
+    padding: 0 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-nav);
+    color: var(--text-light);
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .theme-opt:hover {
+    color: var(--text);
+  }
+
+  .theme-opt input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .theme-opt__dot {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 50%;
+    background: #e5e7eb;
+    box-sizing: border-box;
+  }
+
+  .theme-opt:has(input:checked) {
+    border-color: var(--accent);
+    background: #1a1f4d;
+    color: var(--text);
+  }
+
+  .theme-opt:has(input:checked) .theme-opt__dot {
+    border: 5px solid var(--accent);
+    background: #fff;
+  }
+
+  .theme-opt:has(input:focus-visible) {
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 800px) {
+    & { padding: 24px 16px 40px; }
+
+    .settings-card { padding: 18px; }
+
+    .settings-row {
+      grid-template-columns: 1fr auto;
+      row-gap: 2px;
+      padding: 10px 0;
+    }
+
+    .settings-row__label { grid-column: 1 / -1; }
+  }
+
+  @media (max-width: 560px) {
+    .theme-grid { grid-template-columns: 1fr; }
+  }
+}
