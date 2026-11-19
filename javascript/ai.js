@@ -1,9 +1,14 @@
-import { doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, orderBy, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db, auth, onAuthStateChanged } from './firebase.js';
+import { fetchLatestPredictions, formatLong } from './predictions.js';
+import { selectedSymbol } from './markets.js';
 
 const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const FALLBACK_MODEL = 'openrouter/free';
 const MAX_DAILY_MESSAGES = 5;
+const MAX_HISTORY_MESSAGES = 10;
 const STORAGE_KEY = 'molina:ai:chatId';
 
 let currentUser = null;
@@ -16,6 +21,20 @@ function whenAuthReady() {
         const unsub = onAuthStateChanged(auth, user => { unsub(); resolve(user); });
     });
     return authReady;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatMessage(text) {
+    return escapeHtml(text)
+        .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
+        .split(/\n{2,}/)
+        .map(p => `<p>${p.trim().replace(/\n/g, '<br>')}</p>`)
+        .join('');
 }
 
 // --- Usage Limits ---
@@ -60,11 +79,11 @@ function renderUsage(usage) {
     if (left <= 0) {
         input.disabled = true;
         send.disabled = true;
-        input.placeholder = "Daily limit reached. Try again tomorrow.";
+        input.placeholder = 'Daily limit reached. Try again tomorrow.';
     } else {
         input.disabled = false;
         send.disabled = false;
-        input.placeholder = "Ask about your watchlist…";
+        input.placeholder = `Ask about ${selectedSymbol()}…`;
     }
 }
 
@@ -86,14 +105,14 @@ async function loadChat(chatId) {
     return data.messages || [];
 }
 
-async function saveMessage(chatId, role, content) {
+async function saveMessage(chatId, role, content, extra = {}) {
     const user = await whenAuthReady();
     if (!user) return;
 
     const chatRef = doc(db, 'users', user.uid, 'chats', chatId);
     const snap = await getDoc(chatRef);
     const existing = snap.exists() ? snap.data() : { messages: [] };
-    const messages = [...(existing.messages || []), { role, content, timestamp: Date.now() }];
+    const messages = [...(existing.messages || []), { role, content, timestamp: Date.now(), ...extra }];
 
     await setDoc(chatRef, {
         title: messages.find(m => m.role === 'user')?.content.slice(0, 40) || 'New chat',
@@ -116,13 +135,13 @@ async function renderRecentChats() {
         return;
     }
 
-    list.innerHTML = snap.docs.map(doc => {
-        const data = doc.data();
-        const title = data.title || 'Chat';
-        const isActive = doc.id === currentChatId ? 'is-active' : '';
+    list.innerHTML = snap.docs.map(d => {
+        const data = d.data();
+        const title = escapeHtml(data.title || 'Chat');
+        const isActive = d.id === currentChatId ? 'is-active' : '';
         return `
             <li>
-                <button type="button" class="ai-recent__item ${isActive}" data-chat-id="${doc.id}">
+                <button type="button" class="ai-recent__item ${isActive}" data-chat-id="${escapeHtml(d.id)}">
                     <span class="ai-recent__title">${title}</span>
                     <span class="ai-recent__date">Today</span>
                 </button>
@@ -141,52 +160,171 @@ async function renderRecentChats() {
 
 // --- UI Rendering ---
 
-function renderMessages(messages) {
+const AI_AVATAR = `
+    <span class="ai-msg__avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+    </span>`;
+
+function renderMessages(messages, { pending = false } = {}) {
     const container = document.getElementById('ai-messages');
-    if (!messages.length) {
+    if (!messages.length && !pending) {
         container.innerHTML = '<p class="muted-light" style="text-align: center; padding: 40px;">Ask a question to start a new chat.</p>';
         return;
     }
 
-    container.innerHTML = messages.map(m => {
+    const html = messages.map(m => {
         if (m.role === 'user') {
             return `
                 <div class="ai-msg ai-msg--user">
-                    <p>${escapeHtml(m.content)}</p>
-                </div>
-            `;
-        } else {
-            return `
-                <div class="ai-msg ai-msg--ai">
-                    <span class="ai-msg__avatar" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
-                    </span>
-                    <div class="ai-msg__body"><p>${escapeHtml(m.content)}</p></div>
+                    ${formatMessage(m.content)}
                 </div>
             `;
         }
+        return `
+            <div class="ai-msg ai-msg--ai">
+                ${AI_AVATAR}
+                <div class="ai-msg__body">${formatMessage(m.content)}</div>
+            </div>
+        `;
     }).join('');
+
+    // While waiting for the model, show an animated "thinking" bubble
+    const typing = pending ? `
+        <div class="ai-msg ai-msg--ai ai-msg--typing" role="status" aria-label="Molina AI is thinking">
+            ${AI_AVATAR}
+            <div class="ai-msg__body">
+                <span class="ai-typing" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="ai-typing__text">Thinking…</span>
+            </div>
+        </div>
+    ` : '';
+
+    container.innerHTML = html + typing;
 
     // Scroll to bottom
     const scroll = document.getElementById('ai-chat-scroll');
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// --- Market context (which market the user came from on the Markets page) ---
+
+async function renderContext() {
+    const symbol = selectedSymbol();
+    const ctx = document.getElementById('ai-chat-ctx');
+    if (ctx) ctx.textContent = `Context: ${symbol}`;
+
+    const input = document.getElementById('ai-input');
+    if (input && !input.disabled) input.placeholder = `Ask about ${symbol}…`;
+
+    const card = document.getElementById('ai-ctx-card');
+    if (!card) return;
+
+    const live = await fetchLatestPredictions().catch(() => null);
+    if (selectedSymbol() !== symbol) return; // user moved on while loading
+
+    const m = live?.bySymbol?.[symbol];
+    card.innerHTML = m?.hasForecast
+        ? `
+            <h3>${escapeHtml(symbol)}</h3>
+            <p>${escapeHtml(m.direction.label)} · ${m.confidence}% confidence</p>
+            <p class="muted-light">${m.signals?.length ? escapeHtml(m.signals.join(' · ')) : 'No active SMC signals'}</p>
+        `
+        : `<h3>${escapeHtml(symbol)}</h3><p class="muted-light">No forecast yet</p>`;
+}
+
+function describeMarket(symbol, live) {
+    const m = live?.bySymbol?.[symbol];
+    if (!m || !m.hasForecast) return `Market: ${symbol}. No forecast is available for it yet.`;
+
+    const t = m.trade;
+    const p = m.probabilities;
+    const lines = [
+        `Market: ${symbol}${m.price ? ` (last price ${m.price})` : ''}`,
+        `Forecast for: ${formatLong(live.forecastDay)} (daily model)`,
+        `Predicted direction: ${m.direction.label} with ${m.confidence}% confidence`,
+    ];
+
+    if (p) {
+        lines.push(`Probabilities: up ${p.up}%, down ${p.down}%, consolidation ${p.consolidation}%`);
+    }
+
+    if (t) {
+        lines.push(
+            `Trade setup: ${t.action || 'none'}, entry ${t.entry ?? 'n/a'}, stop loss ${t.stopLoss ?? 'n/a'}, take profit ${t.takeProfit ?? 'n/a'}, R:R ${t.riskReward ?? 'n/a'}`,
+            `Entry type: ${t.entryType || 'n/a'}; stop source: ${t.stopSource || 'n/a'}; target source: ${t.targetSource || 'n/a'}`
+        );
+        if (t.conviction) lines.push(`Conviction: ${t.conviction}`);
+    }
+
+    lines.push(`Active SMC signals: ${m.signals?.length ? m.signals.join(', ') : 'none'}`);
+    return lines.join('\n');
+}
+
+function buildSystemPrompt(symbol, live) {
+    return [
+        'You are Molina AI, a market analysis assistant inside the Molina app.',
+        `The user is asking about ${symbol}. Below is the model output for it.`,
+        'Explain the forecast using ICT / Smart Money Concepts (break of structure, fair value gaps, inverse FVGs, order blocks, breaker blocks, liquidity sweeps) and tie each point to the signals and levels listed.',
+        'Use only the data provided for numbers and levels. If something is missing, say so rather than inventing it.',
+        'Forecasts are probabilistic. Do not give personal financial advice. Be concise and use plain language.',
+        '',
+        '--- MODEL DATA ---',
+        describeMarket(symbol, live),
+    ].join('\n');
+}
+
+// --- Free model list ---
+
+async function fetchFreeModels() {
+    try {
+        const res = await fetch(OPENROUTER_MODELS_URL);
+        if (!res.ok) return [];
+        const { data = [] } = await res.json();
+        return data
+            .filter(m => {
+                const p = m.pricing || {};
+                return parseFloat(p.prompt || '0') === 0 && parseFloat(p.completion || '0') === 0;
+            })
+            .filter(m => !m.id.startsWith('openrouter/')) // meta-routers are added separately
+            .filter(m => (m.architecture?.output_modalities || ['text']).includes('text'))
+            .map(m => ({ id: m.id, name: m.name || m.id }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+        return [];
+    }
+}
+
+async function populateModelSelect() {
+    const select = document.getElementById('ai-model');
+    if (!select || select.dataset.bound) return;
+    select.dataset.bound = '1';
+
+    // Show the fallback immediately so the control is never empty while loading
+    select.innerHTML = `<option value="${FALLBACK_MODEL}">Auto (Free Router)</option>`;
+    select.value = FALLBACK_MODEL;
+
+    const models = await fetchFreeModels();
+    const options = [{ id: FALLBACK_MODEL, name: 'Auto (Free Router)' }, ...models];
+    select.innerHTML = options
+        .map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`)
+        .join('');
+    select.value = FALLBACK_MODEL;
 }
 
 // --- OpenRouter Call ---
 
-async function callOpenRouter(userMessage) {
-    
+async function callOpenRouter(history, symbol) {
+    const live = await fetchLatestPredictions().catch(() => null);
+    const model = document.getElementById('ai-model')?.value || FALLBACK_MODEL;
+
     const body = {
-        model: 'openrouter/free',  
+        model,
         messages: [
-            { role: 'system', content: 'You are Molina AI, a helpful assistant for market analysis. Be concise and use plain language.' },
-            { role: 'user', content: userMessage }
+            { role: 'system', content: buildSystemPrompt(symbol, live) },
+            ...history
+                .filter(m => !m.isError)
+                .slice(-MAX_HISTORY_MESSAGES)
+                .map(({ role, content }) => ({ role, content })),
         ],
     };
 
@@ -203,7 +341,9 @@ async function callOpenRouter(userMessage) {
 
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || `API error ${res.status}`);
+        const error = new Error(err.error?.message || `API error ${res.status}`);
+        error.status = res.status;
+        throw error;
     }
 
     const data = await res.json();
@@ -220,25 +360,19 @@ async function initChatSession(chatId) {
     renderMessages(messages);
     await renderRecentChats();
 
-  
     const firstUserMsg = messages.find(m => m.role === 'user');
     document.getElementById('ai-chat-title').textContent = firstUserMsg ? firstUserMsg.content.slice(0, 50) : 'Molina AI';
-    document.getElementById('ai-chat-ctx').textContent = 'Context: Watchlist';
+
+    renderContext();
 }
 
 export async function initAiPage() {
     currentUser = await whenAuthReady();
     const usage = await getUsage();
     renderUsage(usage);
- 
-    const select = document.getElementById('ai-model');
-    if (select && !select.dataset.bound) {
-        select.dataset.bound = '1';
-        select.innerHTML = '<option value="openrouter/free">Auto (Free Router)</option>';
-        select.value = 'openrouter/free';
-    }
 
- 
+    populateModelSelect();
+
     const newBtn = document.getElementById('ai-new-chat');
     if (newBtn && !newBtn.dataset.bound) {
         newBtn.dataset.bound = '1';
@@ -256,12 +390,13 @@ export async function initAiPage() {
         sendBtn.dataset.bound = '1';
 
         const send = async () => {
+            if (input.disabled) return;
             const text = input.value.trim();
             if (!text) return;
 
             const currentUsage = await getUsage();
             if (currentUsage.count >= MAX_DAILY_MESSAGES) {
-                alert('You have reached your daily limit of 5 messages. Please try again tomorrow.');
+                alert(`You have reached your daily limit of ${MAX_DAILY_MESSAGES} messages. Please try again tomorrow.`);
                 return;
             }
 
@@ -269,38 +404,30 @@ export async function initAiPage() {
             input.disabled = true;
             sendBtn.disabled = true;
 
-             
+            const symbol = selectedSymbol();
             const messages = await loadChat(currentChatId);
             messages.push({ role: 'user', content: text, timestamp: Date.now() });
-            renderMessages(messages);
+            input.placeholder = 'Molina AI is thinking…';
+            renderMessages(messages, { pending: true });
 
-             
             await saveMessage(currentChatId, 'user', text);
-            await incrementUsage();
-            const newUsage = await getUsage();
-            renderUsage(newUsage);
 
             try {
-                const reply = await callOpenRouter(text);
+                const reply = await callOpenRouter(messages, symbol);
                 await saveMessage(currentChatId, 'assistant', reply);
-                const updatedMessages = await loadChat(currentChatId);
-                renderMessages(updatedMessages);
+                // Only count the message once the model actually answered
+                await incrementUsage();
             } catch (err) {
                 console.error(err);
-                const errorMsg = err.message.includes('429')
+                const errorMsg = err.status === 429
                     ? 'Free tier exhausted for today across all users. Please try again tomorrow.'
                     : 'Something went wrong. Please try again.';
-             
-                await saveMessage(currentChatId, 'assistant', errorMsg);
-                const updatedMessages = await loadChat(currentChatId);
-                renderMessages(updatedMessages);
+                await saveMessage(currentChatId, 'assistant', errorMsg, { isError: true });
             } finally {
-                input.disabled = false;
-                sendBtn.disabled = false;
+                renderMessages(await loadChat(currentChatId));
+                renderRecentChats();
+                renderUsage(await getUsage());
                 input.focus();
-                 
-                const finalUsage = await getUsage();
-                renderUsage(finalUsage);
             }
         };
 
