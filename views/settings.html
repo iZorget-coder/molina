@@ -6,27 +6,46 @@
     <p>Manage your account, forecasts and notifications.</p>
   </div>
 
+  
   <!-- Account -->
-  <section class="settings-card" aria-labelledby="set-account">
-    <h2 id="set-account">Account</h2>
-    <ul class="settings-rows">
-      <li class="settings-row">
-        <span class="settings-row__label">Email</span>
-        <span class="settings-row__value">alex@example.com</span>
-        <button type="button" class="settings-btn">Change</button>
-      </li>
-      <li class="settings-row">
-        <span class="settings-row__label">Password</span>
-        <span class="settings-row__value settings-row__value--dots" aria-label="Password hidden">••••••••••</span>
-        <button type="button" class="settings-btn">Change</button>
-      </li>
-      <li class="settings-row">
-        <span class="settings-row__label">Delete</span>
-        <span class="settings-row__value settings-row__value--muted">Permanently delete your account and data</span>
-        <button type="button" class="settings-btn settings-btn--danger">Delete account</button>
-      </li>
-    </ul>
-  </section>
+<section class="settings-card" aria-labelledby="set-account">
+  <h2 id="set-account">Account</h2>
+  <ul class="settings-rows">
+
+    <li class="settings-row">
+      <span class="settings-row__label">Email</span>
+      <span class="settings-row__value" data-user="email">Loading...</span>
+
+    </li>
+
+    <li class="settings-row">
+      <span class="settings-row__label">Password</span>
+      <span
+        class="settings-row__value settings-row__value--dots"
+        data-password-value
+        aria-label="Password hidden"
+      >••••••••••</span>
+      <button
+        type="button"
+        class="settings-btn"
+        data-password-change
+      >Change</button>
+    </li>
+
+    <li class="settings-row">
+      <span class="settings-row__label">Delete</span>
+      <span class="settings-row__value settings-row__value--muted">
+        Permanently delete your account and data
+      </span>
+      <button
+        type="button"
+        class="settings-btn settings-btn--danger"
+        data-delete-account
+      >Delete account</button>
+    </li>
+
+  </ul>
+</section>
 
   <!-- DXY preference -->
   <section class="settings-card" aria-labelledby="set-dxy">
@@ -67,66 +86,30 @@
 </section>
 
   <!-- Notification preferences -->
-  <section class="settings-card" aria-labelledby="set-notify">
-    <h2 id="set-notify">Notification Preferences</h2>
-    <ul class="settings-toggles">
-      <li class="settings-toggle">
-        <div class="settings-toggle__text">
-          <strong>Daily forecast summary</strong>
-          <p>One message each evening with tomorrow's forecasts.</p>
-        </div>
-        <label class="settings-switch">
-          <input type="checkbox" checked aria-label="Daily forecast summary">
-          <span class="settings-switch__track"></span>
-        </label>
-      </li>
-      <li class="settings-toggle">
-        <div class="settings-toggle__text">
-          <strong>Direction change alerts</strong>
-          <p>Get notified when a market flips from UP, DOWN or CONSOLIDATION.</p>
-        </div>
-        <label class="settings-switch">
-          <input type="checkbox" checked aria-label="Direction change alerts">
-          <span class="settings-switch__track"></span>
-        </label>
-      </li>
-      <li class="settings-toggle">
-        <div class="settings-toggle__text">
-          <strong>News digest</strong>
-          <p>A weekly roundup of headlines for your watchlist.</p>
-        </div>
-        <label class="settings-switch">
-          <input type="checkbox" aria-label="News digest">
-          <span class="settings-switch__track"></span>
-        </label>
-      </li>
-    </ul>
-  </section>
+ 
 
   <!-- Theme -->
   <section class="settings-card" aria-labelledby="set-theme">
     <h2 id="set-theme">Theme</h2>
     <div class="theme-grid" role="radiogroup" aria-labelledby="set-theme">
-      <label class="theme-opt">
-        <input type="radio" name="theme" value="light">
-        <span class="theme-opt__dot"></span>
-        <span>Light</span>
-      </label>
+      
       <label class="theme-opt">
         <input type="radio" name="theme" value="dark" checked>
         <span class="theme-opt__dot"></span>
         <span>Dark</span>
       </label>
-      <label class="theme-opt">
-        <input type="radio" name="theme" value="system">
-        <span class="theme-opt__dot"></span>
-        <span>System</span>
-      </label>
+      
     </div>
   </section>
 
 
-  <button type="button" class="settings-btn settings-btn--wide">Log out</button>
+  <button
+  type="button"
+  class="settings-btn settings-btn--wide"
+  data-logout
+>
+  Log out
+</button>
 
 </main>
 
