@@ -2218,163 +2218,163 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
 
     
     
-def predict_for_date(LATEST_DATE):
+    def predict_for_date(LATEST_DATE):
 
-    input_date = pd.to_datetime(LATEST_DATE)
+        input_date = pd.to_datetime(LATEST_DATE)
 
-    use_live = len(df_live) and (df_live['Date'] == input_date).any()
-    source = df_live if use_live else df_model
+        use_live = len(df_live) and (df_live['Date'] == input_date).any()
+        source = df_live if use_live else df_model
 
-    row, was_fuzzy = _find_row_by_date(source, input_date)
+        row, was_fuzzy = _find_row_by_date(source, input_date)
 
-    if was_fuzzy:
-        print(f"⚠️  Date not found. Using closest: {row['Date'].iloc[0].date()}")
+        if was_fuzzy:
+            print(f"⚠️  Date not found. Using closest: {row['Date'].iloc[0].date()}")
 
-    X_input = row[feature_columns]
-    X_scaled = scaler.transform(X_input)
+        X_input = row[feature_columns]
+        X_scaled = scaler.transform(X_input)
 
-    prediction = int(model1.predict(X_scaled)[0])
-    probability = model1.predict_proba(X_scaled)[0]
+        prediction = int(model1.predict(X_scaled)[0])
+        probability = model1.predict_proba(X_scaled)[0]
 
-    probs = {
-        CLASS_NAMES[int(c)]: float(p)
-        for c, p in zip(model1.classes_, probability)
-    }
+        probs = {
+            CLASS_NAMES[int(c)]: float(p)
+            for c, p in zip(model1.classes_, probability)
+        }
 
-    predicted_state = CLASS_NAMES[prediction]
-    confidence = probs[predicted_state]
+        predicted_state = CLASS_NAMES[prediction]
+        confidence = probs[predicted_state]
 
-    input_date_actual = row['Date'].iloc[0]
-    close_t = row['Close'].iloc[0]
-    next_date = _next_trading_date(input_date_actual)
+        input_date_actual = row['Date'].iloc[0]
+        close_t = row['Close'].iloc[0]
+        next_date = _next_trading_date(input_date_actual)
 
-    macro_s = int(row['Macro_Structure'].iloc[0])
-    micro_s = int(row['Micro_Structure'].iloc[0])
+        macro_s = int(row['Macro_Structure'].iloc[0])
+        micro_s = int(row['Micro_Structure'].iloc[0])
 
-    mtf = _describe_mtf(
-        macro_s,
-        micro_s,
-        int(row['Pullback_In_Uptrend_MTF'].iloc[0]),
-        int(row['Bounce_In_Downtrend_MTF'].iloc[0])
-    )
+        mtf = _describe_mtf(
+            macro_s,
+            micro_s,
+            int(row['Pullback_In_Uptrend_MTF'].iloc[0]),
+            int(row['Bounce_In_Downtrend_MTF'].iloc[0])
+        )
 
-    # Detect active SMC signals on the prediction date
-    signals = []
+        # Detect active SMC signals on the prediction date
+        signals = []
 
-    if row['Bull_BB'].iloc[0] == 1:
-        signals.append('Bull Breaker')
+        if row['Bull_BB'].iloc[0] == 1:
+            signals.append('Bull Breaker')
 
-    if row['Bear_BB'].iloc[0] == 1:
-        signals.append('Bear Breaker')
+        if row['Bear_BB'].iloc[0] == 1:
+            signals.append('Bear Breaker')
 
-    if row['Bull_IFVG'].iloc[0] == 1:
-        signals.append('Bull IFVG')
+        if row['Bull_IFVG'].iloc[0] == 1:
+            signals.append('Bull IFVG')
 
-    if row['Bear_IFVG'].iloc[0] == 1:
-        signals.append('Bear IFVG')
+        if row['Bear_IFVG'].iloc[0] == 1:
+            signals.append('Bear IFVG')
 
-    if row['BOS_Bull'].iloc[0] == 1:
-        signals.append('BOS Bull')
+        if row['BOS_Bull'].iloc[0] == 1:
+            signals.append('BOS Bull')
 
-    if row['BOS_Bear'].iloc[0] == 1:
-        signals.append('BOS Bear')
+        if row['BOS_Bear'].iloc[0] == 1:
+            signals.append('BOS Bear')
 
-    if row['CHoCH'].iloc[0] == 1:
-        signals.append('CHoCH')
+        if row['CHoCH'].iloc[0] == 1:
+            signals.append('CHoCH')
 
-    if row['Liquidity_Sweep_High'].iloc[0] == 1:
-        signals.append('Sweep High')
+        if row['Liquidity_Sweep_High'].iloc[0] == 1:
+            signals.append('Sweep High')
 
-    if row['Liquidity_Sweep_Low'].iloc[0] == 1:
-        signals.append('Sweep Low')
+        if row['Liquidity_Sweep_Low'].iloc[0] == 1:
+            signals.append('Sweep Low')
 
-    # Prediction output
-    print("\n" + "=" * 60)
-    print(f"🔮 {index_name} PREDICTION")
-    print("=" * 60)
+        # Prediction output
+        print("\n" + "=" * 60)
+        print(f"🔮 {index_name} PREDICTION")
+        print("=" * 60)
 
-    print(f"📅 Data date (T):        {input_date_actual.date()}")
-    print(f"💰 Close price (T):      {close_t:.2f}")
-    print(f"📅 Predicting move for:  {next_date.date()}")
+        print(f"📅 Data date (T):        {input_date_actual.date()}")
+        print(f"💰 Close price (T):      {close_t:.2f}")
+        print(f"📅 Predicting move for:  {next_date.date()}")
 
-    print(f"\n🎯 Predicted state:      {_DIR_ICON[predicted_state]}")
-    print(f"📊 Confidence:           {confidence:.2%}")
+        print(f"\n🎯 Predicted state:      {_DIR_ICON[predicted_state]}")
+        print(f"📊 Confidence:           {confidence:.2%}")
 
-    print(
-        f"   UP {probs['UP']:.1%} | "
-        f"DOWN {probs['DOWN']:.1%} | "
-        f"CONS {probs['CONSOLIDATION']:.1%}"
-    )
+        print(
+            f"   UP {probs['UP']:.1%} | "
+            f"DOWN {probs['DOWN']:.1%} | "
+            f"CONS {probs['CONSOLIDATION']:.1%}"
+        )
 
-    print(f"\n🧭 MTF: {mtf}")
-    print(f"   Dealing pos: {row['Dealing_Pos'].iloc[0]:.2f}")
+        print(f"\n🧭 MTF: {mtf}")
+        print(f"   Dealing pos: {row['Dealing_Pos'].iloc[0]:.2f}")
 
-    print(
-        f"\n🔔 Active SMC signals: "
-        f"{', '.join(signals) if signals else 'None'}"
-    )
+        print(
+            f"\n🔔 Active SMC signals: "
+            f"{', '.join(signals) if signals else 'None'}"
+        )
 
-    # Trade recommendation
-    baseline = recommend_trade_entry(row, probs)
+        # Trade recommendation
+        baseline = recommend_trade_entry(row, probs)
 
-    trade, adapt_info = adapt_trade_with_journal(
-        baseline, row, probs, next_date
-    )
+        trade, adapt_info = adapt_trade_with_journal(
+            baseline, row, probs, next_date
+        )
 
-    print(f"\n💼 TRADE ENTRY RECOMMENDATION")
-    print("-" * 60)
+        print(f"\n💼 TRADE ENTRY RECOMMENDATION")
+        print("-" * 60)
 
-    if trade['action'] == 'NO TRADE':
-        print(f"   NO TRADE — {trade['reason']}")
+        if trade['action'] == 'NO TRADE':
+            print(f"   NO TRADE — {trade['reason']}")
 
-    else:
-        hm = trade.get('hourly_meta')
+        else:
+            hm = trade.get('hourly_meta')
 
-        print(f"   Side:         {trade['action']}")
-        print(f"   Entry:        {trade['entry']:.2f} ({trade['entry_type']})")
-        print(f"   Stop:         {trade['stop_loss']:.2f} ({trade['stop_source']})")
-        print(f"   Target:       {trade['take_profit']:.2f} ({trade['target_source']})")
-        print(f"   R:R:          {trade['risk_reward']}")
+            print(f"   Side:         {trade['action']}")
+            print(f"   Entry:        {trade['entry']:.2f} ({trade['entry_type']})")
+            print(f"   Stop:         {trade['stop_loss']:.2f} ({trade['stop_source']})")
+            print(f"   Target:       {trade['take_profit']:.2f} ({trade['target_source']})")
+            print(f"   R:R:          {trade['risk_reward']}")
 
-        if hm is not None:
-            print(f"\n   H1 ZONE (model):")
-            print(f"     Kind:          {hm['kind'].upper()}")
-            print(f"     Probability:   {hm['model_prob']:.1%}")
-            print(f"     H1 trend:      {hm['h1_trend']:+d}")
-            print(f"     Age:           {hm['bars_since_zone']} bars")
-            print(f"     Session:       {hm['session']} {hm['hour_utc']:02d}:00 UTC")
-            print(f"     OTE aligned:   {'YES' if hm.get('ote_aligned') else 'NO'}")
+            if hm is not None:
+                print(f"\n   H1 ZONE (model):")
+                print(f"     Kind:          {hm['kind'].upper()}")
+                print(f"     Probability:   {hm['model_prob']:.1%}")
+                print(f"     H1 trend:      {hm['h1_trend']:+d}")
+                print(f"     Age:           {hm['bars_since_zone']} bars")
+                print(f"     Session:       {hm['session']} {hm['hour_utc']:02d}:00 UTC")
+                print(f"     OTE aligned:   {'YES' if hm.get('ote_aligned') else 'NO'}")
 
-    # Journal output
-    if USE_JOURNAL and baseline['action'] != 'NO TRADE':
+        # Journal output
+        if USE_JOURNAL and baseline['action'] != 'NO TRADE':
 
-        if adapt_info['params'] is not None:
-            s_, e_, t_ = adapt_info['params']
+            if adapt_info['params'] is not None:
+                s_, e_, t_ = adapt_info['params']
 
-            print(
-                f"\n📓 Journal: entry +{s_:.2f} ATR | "
-                f"stop +{e_:.2f} ATR | target x{t_:.2f}"
-            )
+                print(
+                    f"\n📓 Journal: entry +{s_:.2f} ATR | "
+                    f"stop +{e_:.2f} ATR | target x{t_:.2f}"
+                )
 
-        if adapt_info['meta_p'] is not None:
-            print(
-                f"📓 Win prob: {adapt_info['meta_p']:.1%} "
-                f"(exp {adapt_info['meta_exp_r']:+.2f}R)"
-                f"{'  → FILTERED' if adapt_info['filtered'] else ''}"
-            )
+            if adapt_info['meta_p'] is not None:
+                print(
+                    f"📓 Win prob: {adapt_info['meta_p']:.1%} "
+                    f"(exp {adapt_info['meta_exp_r']:+.2f}R)"
+                    f"{'  → FILTERED' if adapt_info['filtered'] else ''}"
+                )
 
-    print("=" * 60)
+        print("=" * 60)
 
-    # Return all prediction data, including SMC signals
-    return (
-        predicted_state,
-        probs,
-        row,
-        trade,
-        baseline,
-        adapt_info,
-        signals
-    )
+        # Return all prediction data, including SMC signals
+        return (
+            predicted_state,
+            probs,
+            row,
+            trade,
+            baseline,
+            adapt_info,
+            signals
+        )
 
         print(f"\n🔔 Active SMC signals: {', '.join(signals) if signals else 'None'}")
         print("\n" + "="*60)
