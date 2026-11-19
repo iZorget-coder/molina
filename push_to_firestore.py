@@ -72,7 +72,7 @@ def hourly_candles(symbol, n=200):
 
 for symbol in predictions:
     predictions[symbol]["candles"] = daily_candles(symbol, 100)
-    predictions[symbol]["candlesH1"] = hourly_candles(symbol, 200)
+    predictions[symbol]["candlesH1"] = hourly_candles(symbol, 50)
 
 data_date = next(iter(predictions.values()))["date"]
 
