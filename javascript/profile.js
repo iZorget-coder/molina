@@ -62,7 +62,9 @@ function buildProfile(user, data = {}) {
 }
 
 /* ---------- Create / complete the profile (call right after sign-up or Google sign-in) ----------
-   Never overwrites a name or avatar the user already has. */
+   Never overwrites a name or avatar the user already has.
+   Also initializes (or backfills) the app-level fields the rest of Molina reads:
+   watchlist, news cache, and AI daily usage. */
 export async function ensureUserProfile(user, names = {}) {
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
@@ -79,6 +81,8 @@ export async function ensureUserProfile(user, names = {}) {
   }
 
   const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+
   const data = {
     firstName,
     lastName,
@@ -89,6 +93,14 @@ export async function ensureUserProfile(user, names = {}) {
     updatedAt: now,
   };
   if (!existing.createdAt) data.createdAt = now;
+
+  // App-level fields — write only when missing so we never clobber real data.
+  if (!Array.isArray(existing.watchlist))   data.watchlist = ['SPX'];
+  if (!('newsDate' in existing))            data.newsDate = null;
+  if (!Array.isArray(existing.newsArticles)) data.newsArticles = [];
+  if (!existing.aiUsage || typeof existing.aiUsage !== 'object') {
+    data.aiUsage = { date: today, count: 0 };
+  }
 
   await setDoc(ref, data, { merge: true });
   cache = null;

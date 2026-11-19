@@ -46,7 +46,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python push_to_firestore.py
-
+ 
       - name: Commit updated CSVs and predictions
         run: |
           git config user.name "github-actions[bot]"
@@ -74,3 +74,10 @@ jobs:
 
           echo "Could not push after 5 attempts"
           exit 1
+
+      - name: Delete daily chats
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python delete_chats.py
+
+          

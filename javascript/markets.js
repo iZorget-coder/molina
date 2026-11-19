@@ -246,27 +246,28 @@ function paintChart() {
   }
 
   const W = 1000, H = 400;
-  const PAD = { left: 70, right: 20, top: 20, bottom: 40 };
+  const PAD = { left: 70, right: 90, top: 20, bottom: 40 };
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
 
   const t = m?.trade;
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
-  const extras = [t?.entry, t?.stopLoss, t?.takeProfit].filter(v => typeof v === 'number' && !isNaN(v));
-  const allPrices = [...highs, ...lows, ...extras];
-  const minP = Math.min(...allPrices);
-  const maxP = Math.max(...allPrices);
-  const pad = (maxP - minP) * 0.05 || 1;
+
+  // Y-range from candles ONLY — trade levels do not stretch the axis
+  const minP = Math.min(...lows);
+  const maxP = Math.max(...highs);
+  const pad = (maxP - minP) * 0.04 || 1;
   const lo = minP - pad;
   const hi = maxP + pad;
 
   const y = p => PAD.top + plotH - ((p - lo) / (hi - lo)) * plotH;
   const barW = plotW / candles.length;
-  const bodyW = Math.max(barW * 0.55, 1);
+  const bodyW = Math.max(barW * 0.6, 1);
 
   let html = '';
 
+  // Gridlines + y-axis labels
   for (let i = 0; i <= 5; i++) {
     const price = lo + (hi - lo) * (i / 5);
     const yPix = y(price);
@@ -274,6 +275,7 @@ function paintChart() {
     html += `<text x="${PAD.left - 8}" y="${yPix + 4}" text-anchor="end" fill="#8b95ad" font-size="11" font-family="'Space Mono', monospace">${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
   }
 
+  // Candles
   candles.forEach((c, i) => {
     const x = PAD.left + i * barW + barW / 2;
     const up = c.close >= c.open;
@@ -287,6 +289,7 @@ function paintChart() {
     html += `<rect x="${x - bodyW / 2}" y="${bodyTop}" width="${bodyW}" height="${bodyH}" fill="${color}"/>`;
   });
 
+  // Trade levels — drawn only if inside the visible range; edge indicator otherwise
   const levels = [
     { price: t?.takeProfit, color: '#22c55e', label: 'TP' },
     { price: t?.entry,      color: '#818cf8', label: 'Entry' },
@@ -295,10 +298,20 @@ function paintChart() {
 
   levels.forEach(l => {
     const yPix = y(l.price);
-    html += `<line x1="${PAD.left}" y1="${yPix}" x2="${W - PAD.right}" y2="${yPix}" stroke="${l.color}" stroke-width="1" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>`;
-    html += `<text x="${W - PAD.right - 4}" y="${yPix - 4}" text-anchor="end" fill="${l.color}" font-size="11" font-weight="600" font-family="'Space Mono', monospace">${l.label} ${l.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
+    const inside = yPix >= PAD.top && yPix <= PAD.top + plotH;
+
+    if (inside) {
+      html += `<line x1="${PAD.left}" y1="${yPix}" x2="${W - PAD.right}" y2="${yPix}" stroke="${l.color}" stroke-width="1" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>`;
+      html += `<text x="${W - PAD.right - 4}" y="${yPix - 4}" text-anchor="end" fill="${l.color}" font-size="11" font-weight="600" font-family="'Space Mono', monospace">${l.label} ${l.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
+    } else {
+      const isAbove = yPix < PAD.top;
+      const edgeY = isAbove ? PAD.top + 12 : PAD.top + plotH - 6;
+      const arrow = isAbove ? '▲' : '▼';
+      html += `<text x="${W - PAD.right - 4}" y="${edgeY}" text-anchor="end" fill="${l.color}" font-size="10" font-weight="600" font-family="'Space Mono', monospace">${arrow} ${l.label} ${l.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
+    }
   });
 
+  // X-axis labels
   for (let i = 0; i <= 4; i++) {
     const idx = Math.floor((candles.length - 1) * (i / 4));
     const c = candles[idx];
