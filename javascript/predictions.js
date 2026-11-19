@@ -166,6 +166,7 @@ function normalise(docId, data, olderPredictions) {
   label: hasForecast
     ? `${direction.arrow} ${direction.label}${confidence !== null ? ` ${confidence}%` : ''}`
     : 'No forecast',
+    candles: Array.isArray(p?.candles) ? p.candles : [],
 };
   }
 

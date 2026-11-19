@@ -230,6 +230,92 @@ function paintTrade(symbol, m) {
   }
 }
 
+function paintChart(symbol, m) {
+  const svg = document.getElementById('price-chart');
+  const lastDateEl = document.getElementById('chart-last-date');
+  if (!svg) return;
+
+  const candles = Array.isArray(m?.candles) ? m.candles : [];
+  if (!candles.length) {
+    svg.innerHTML = '<text x="500" y="200" text-anchor="middle" fill="#8b95ad" font-size="14">No candle data</text>';
+    return;
+  }
+
+  if (lastDateEl) lastDateEl.textContent = `Last session: ${candles[candles.length - 1].date}`;
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 1000, H = 400;
+  const PAD = { left: 70, right: 20, top: 20, bottom: 40 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  // Price range: candles + trade levels
+  const t = m?.trade;
+  const closes = candles.map(c => c.close);
+  const highs = candles.map(c => c.high);
+  const lows = candles.map(c => c.low);
+  const extras = [t?.entry, t?.stopLoss, t?.takeProfit].filter(v => typeof v === 'number' && !isNaN(v));
+  const allPrices = [...highs, ...lows, ...extras];
+  const minP = Math.min(...allPrices);
+  const maxP = Math.max(...allPrices);
+  const pad = (maxP - minP) * 0.05 || 1;
+  const lo = minP - pad;
+  const hi = maxP + pad;
+
+  const y = p => PAD.top + plotH - ((p - lo) / (hi - lo)) * plotH;
+  const barW = plotW / candles.length;
+  const bodyW = barW * 0.55;
+
+  let html = '';
+
+  // --- Gridlines + y-axis labels (5 levels) ---
+  for (let i = 0; i <= 5; i++) {
+    const price = lo + (hi - lo) * (i / 5);
+    const yPix = y(price);
+    html += `<line x1="${PAD.left}" y1="${yPix}" x2="${W - PAD.right}" y2="${yPix}" stroke="#1b2540" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    html += `<text x="${PAD.left - 8}" y="${yPix + 4}" text-anchor="end" fill="#8b95ad" font-size="11" font-family="'Space Mono', monospace">${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
+  }
+
+  // --- Candles ---
+  candles.forEach((c, i) => {
+    const x = PAD.left + i * barW + barW / 2;
+    const up = c.close >= c.open;
+    const color = up ? '#22c55e' : '#ef4444';
+
+    // wick
+    html += `<line x1="${x}" y1="${y(c.high)}" x2="${x}" y2="${y(c.low)}" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+
+    // body
+    const bodyTop = y(Math.max(c.open, c.close));
+    const bodyBot = y(Math.min(c.open, c.close));
+    const bodyH = Math.max(bodyBot - bodyTop, 1);
+    html += `<rect x="${x - bodyW / 2}" y="${bodyTop}" width="${bodyW}" height="${bodyH}" fill="${color}"/>`;
+  });
+
+  // --- Trade level lines ---
+  const levels = [
+    { price: t?.takeProfit, color: '#22c55e', label: 'TP' },
+    { price: t?.entry,      color: '#818cf8', label: 'Entry' },
+    { price: t?.stopLoss,   color: '#ef4444', label: 'SL' },
+  ].filter(l => typeof l.price === 'number' && !isNaN(l.price));
+
+  levels.forEach(l => {
+    const yPix = y(l.price);
+    html += `<line x1="${PAD.left}" y1="${yPix}" x2="${W - PAD.right}" y2="${yPix}" stroke="${l.color}" stroke-width="1" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>`;
+    html += `<text x="${W - PAD.right - 4}" y="${yPix - 4}" text-anchor="end" fill="${l.color}" font-size="11" font-weight="600" font-family="'Space Mono', monospace">${l.label} ${l.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
+  });
+
+  // --- X-axis: 5 date labels, evenly spaced ---
+  for (let i = 0; i <= 4; i++) {
+    const idx = Math.floor((candles.length - 1) * (i / 4));
+    const c = candles[idx];
+    const x = PAD.left + idx * barW + barW / 2;
+    html += `<text x="${x}" y="${H - PAD.bottom + 18}" text-anchor="middle" fill="#8b95ad" font-size="11" font-family="'Space Mono', monospace">${c.date}</text>`;
+  }
+
+  svg.innerHTML = html;
+}
+
 function paintSmc(symbol, m) {
   const grid = $('smc-grid');
   const wide = $('smc-wide');
@@ -295,6 +381,7 @@ export async function initMarketPage() {
     paintPrediction(symbol, m, live);
     paintTrade(symbol, m);
     paintSmc(symbol, m);
+    paintChart(symbol, m);
   } catch (err) {
     console.error('Could not load the market', err);
     if (!$('pred-title')) return;
