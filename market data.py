@@ -2439,7 +2439,7 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
             print(f"   Meta filter ACTIVE (AUC {journal_state['meta']['auc']:.3f})")
         _walkforward_report(journal, index_name)
 
-    predicted_state, probs, row, trade, baseline, adapt_info, signals = predict_for_date(input_date)
+    predicted_state, probs, row, trade, baseline, adapt_info, signals = predict_for_date(LATEST_DATE)
 
     if USE_JOURNAL:
         rec = adapt_info['record']
