@@ -29,10 +29,11 @@ const SILENT_DELETE_ERRORS = new Set([
   'auth/user-cancelled'
 ]);
 
-// Runs every time the settings view is injected.
+ 
 export async function bindSettings() {
 
   renderSettingsAiUsage();
+
 
 
   const logoutBtn = document.querySelector('[data-logout]');
@@ -44,7 +45,7 @@ export async function bindSettings() {
       const user = auth.currentUser;
 
       if (!user) {
-        window.location.replace('/index.html');
+        window.location.replace(import.meta.env.BASE_URL + 'index.html');
         return;
       }
 
@@ -52,7 +53,7 @@ export async function bindSettings() {
 
       try {
         await signOut(auth);
-        window.location.replace('/index.html');
+        window.location.replace(import.meta.env.BASE_URL + 'index.html');
       } catch (err) {
         console.error('Could not log out:', err);
         alert('Could not log out. Please try again.');
@@ -63,7 +64,7 @@ export async function bindSettings() {
 
   }
 
-
+ 
   const deleteBtn = document.querySelector('[data-delete-account]');
 
   if (deleteBtn) {
@@ -73,7 +74,7 @@ export async function bindSettings() {
       const user = auth.currentUser;
 
       if (!user) {
-        window.location.replace('/index.html');
+        window.location.replace(import.meta.env.BASE_URL + 'index.html');
         return;
       }
 
@@ -92,8 +93,7 @@ export async function bindSettings() {
           .map(provider => provider.providerId);
 
         if (providers.includes('google.com')) {
-
-
+ 
           await reauthenticateWithPopup(user, new GoogleAuthProvider());
 
         } else if (providers.includes('password')) {
@@ -102,7 +102,7 @@ export async function bindSettings() {
             'Enter your current password to delete your account:'
           );
 
-          // Cancelled - do nothing.
+          
           if (password === null) {
             resetButton();
             return;
@@ -124,15 +124,15 @@ export async function bindSettings() {
 
         }
 
-        // Re-authenticated: from here on the deletion is going ahead.
+        
         deleteBtn.textContent = 'Deleting...';
 
-        // Delete profile data first (needs a signed-in user), then the account.
+ 
         await deleteDoc(doc(db, 'users', user.uid));
         await deleteUser(user);
 
-        // The auth listener will also redirect; this just makes it immediate.
-        window.location.replace('/index.html');
+        
+        window.location.replace(import.meta.env.BASE_URL + 'index.html');
 
       } catch (err) {
 
@@ -140,7 +140,7 @@ export async function bindSettings() {
 
         resetButton();
 
-        // User closed the Google popup - not an error worth showing.
+       
         if (SILENT_DELETE_ERRORS.has(err.code)) return;
 
         let message = 'Could not delete your account. Please try again.';
@@ -184,7 +184,10 @@ export async function bindSettings() {
 
   }
 
-  
+  // --------------------------------------------------
+  // LOAD USER PROFILE
+  // --------------------------------------------------
+
   const profile = await getUserProfile().catch(err => {
     console.error('Could not load user profile:', err);
     return null;
@@ -192,18 +195,18 @@ export async function bindSettings() {
 
   if (!profile) return;
 
-  // Populate account information.
+  
   document.querySelectorAll('[data-user]').forEach(el => {
     el.textContent = profile[el.dataset.user] || '—';
   });
 
-  // Render account avatar.
+  
   renderAvatar(
     document.querySelector('[data-user-avatar]'),
     profile
   );
 
-  // Google-only accounts have no password to change.
+   
   if (!profile.hasPassword) {
 
     const value = document.querySelector('[data-password-value]');
