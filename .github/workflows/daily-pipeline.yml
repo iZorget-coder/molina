@@ -2,7 +2,7 @@ name: Daily Market Pipeline
 
 on:
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '0 23 * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,9 @@ jobs:
 
       - name: Run Intraday Extraction
         run: python "Intraday extract.py"
+
+      - name: Update Daily CSVs (Yahoo + Hourly fallback)
+        run: python update_daily_csvs.py
 
       - name: Run Market Data Pipeline
         run: python "market data.py"
