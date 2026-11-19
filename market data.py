@@ -2376,51 +2376,6 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
             signals
         )
 
-        print(f"\n🔔 Active SMC signals: {', '.join(signals) if signals else 'None'}")
-        print("\n" + "="*60)
-        print(f"🔮 {index_name} PREDICTION")
-        print("="*60)
-        print(f"📅 Data date (T):        {input_date_actual.date()}")
-        print(f"💰 Close price (T):      {close_t:.2f}")
-        print(f"📅 Predicting move for:  {next_date.date()}")
-        print(f"\n🎯 Predicted state:      {_DIR_ICON[predicted_state]}")
-        print(f"📊 Confidence:           {confidence:.2%}")
-        print(f"   UP {probs['UP']:.1%} | DOWN {probs['DOWN']:.1%} | CONS {probs['CONSOLIDATION']:.1%}")
-        print(f"\n🧭 MTF: {mtf}")
-        print(f"   Dealing pos: {row['Dealing_Pos'].iloc[0]:.2f}")
-        baseline = recommend_trade_entry(row, probs)
-        trade, adapt_info = adapt_trade_with_journal(baseline, row, probs, next_date)
-        print(f"\n💼 TRADE ENTRY RECOMMENDATION")
-        print("-"*60)
-        if trade['action'] == 'NO TRADE':
-            print(f"   NO TRADE — {trade['reason']}")
-        else:
-            hm = trade.get('hourly_meta')
-            print(f"   Side:         {trade['action']}")
-            print(f"   Entry:        {trade['entry']:.2f}  ({trade['entry_type']})")
-            print(f"   Stop:         {trade['stop_loss']:.2f}  ({trade['stop_source']})")
-            print(f"   Target:       {trade['take_profit']:.2f}  ({trade['target_source']})")
-            print(f"   R:R:          {trade['risk_reward']}")
-            if hm is not None:
-                print(f"\n   H1 ZONE (model):")
-                print(f"     Kind:          {hm['kind'].upper()}")
-                print(f"     Probability:   {hm['model_prob']:.1%}")
-                print(f"     H1 trend:      {hm['h1_trend']:+d}")
-                print(f"     Age:           {hm['bars_since_zone']} bars")
-                print(f"     Session:       {hm['session']} {hm['hour_utc']:02d}:00 UTC")
-                print(f"     OTE aligned:   {'YES' if hm.get('ote_aligned') else 'NO'}")
-        if USE_JOURNAL and baseline['action'] != 'NO TRADE':
-            if adapt_info['params'] is not None:
-                s_, e_, t_ = adapt_info['params']
-                print(f"\n📓 Journal: entry +{s_:.2f} ATR | stop +{e_:.2f} ATR | target x{t_:.2f}")
-            if adapt_info['meta_p'] is not None:
-                print(f"📓 Win prob: {adapt_info['meta_p']:.1%} (exp {adapt_info['meta_exp_r']:+.2f}R)"
-                      f"{'  → FILTERED' if adapt_info['filtered'] else ''}")
-        print("="*60)
-        predicted_state, probs, row, trade, baseline, adapt_info, signals = predict_for_date(LATEST_DATE)
-        return predicted_state, probs, row, trade, baseline, adapt_info, signals
-
-
     # ---------------- RUN ----------------
     LATEST_DATE = df['Date'].max().date()
     print(f"\n🔎 Latest date: {LATEST_DATE}")
@@ -2450,7 +2405,8 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
             print(f"   Meta filter ACTIVE (AUC {journal_state['meta']['auc']:.3f})")
         _walkforward_report(journal, index_name)
 
-         predicted_state, probs, row, trade, baseline, adapt_info, signals = predict_for_date(LATEST_DATE)
+
+    predicted_state, probs, row, trade, baseline, adapt_info, signals = predict_for_date(LATEST_DATE)
 
     if USE_JOURNAL:
         rec = adapt_info['record']
@@ -2503,6 +2459,7 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
         'close': float(row['Close'].iloc[0]),
         'latest_date': str(LATEST_DATE),
         'trade': trade,
+        'signals': signals,
         'h1_model_accepted': h1_model.get("accepted", False),
         'h1_model_auc': h1_model.get('auc', float('nan')),
         'h1_samples': h1_model.get('n', 0),
@@ -2575,7 +2532,7 @@ for csv_path, index_name in INDEX_CONFIGS:
                         "DOWN": float(res['probs']['DOWN']),
                         "CONSOLIDATION": float(res['probs']['CONSOLIDATION']),
                     },
-                    "signals": signals,
+                "signals": res['signals'],
                     
                      "close": float(res['close']),
                      "date": str(res['latest_date']),
