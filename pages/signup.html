@@ -162,9 +162,10 @@
     ensureUserProfile
   } from '../javascript/profile.js';
 
+  const APP_URL = import.meta.env.BASE_URL + 'pages/app.html';
 
   onAuthStateChanged(auth, (user) => {
-    if (user && !isAuthFlowActive()) window.location.replace('app.html');
+    if (user && !isAuthFlowActive()) window.location.replace(APP_URL);
   });
 
   const form = document.getElementById('signup-form');
@@ -196,7 +197,7 @@
     } catch (err) {
       console.error('Could not save profile', err);
     }
-    window.location.replace('app.html');
+    window.location.replace(APP_URL);
   }
 
  

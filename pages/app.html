@@ -20,29 +20,36 @@
   <link rel="stylesheet" href="../styles/markets-trade.css">
   <link rel="stylesheet" href="../styles/mobile.css">
 
-  <script defer src="../javascript/nav.js"></script>
+<script type="module" src="../javascript/nav.js"></script>
   <script type="module" src="../javascript/app.js"></script>
 
 
-<div id="auth-curtain" style="position:fixed;inset:0;background:#f1f5f9;z-index:9999;"></div>
-<script type="module">
-  import { auth, onAuthStateChanged } from '../javascript/firebase.js';
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      window.location.replace(import.meta.env.BASE_URL + 'index.html');
-    } else {
-      document.getElementById('auth-curtain').remove();
-    }
-  });
-</script>
+
   
 </head>
 <body>
 
+  <div id="auth-curtain"
+       style="position:fixed;inset:0;background:#f1f5f9;z-index:9999;">
+  </div>
+
   <div id="nav-container"></div>
 
-  
   <div id="view-container"></div>
+
+  <script type="module">
+    import { auth, onAuthStateChanged } from '../javascript/firebase.js';
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.replace(
+          import.meta.env.BASE_URL + 'index.html'
+        );
+      } else {
+        document.getElementById('auth-curtain')?.remove();
+      }
+    });
+  </script>
 
 </body>
 </html>
