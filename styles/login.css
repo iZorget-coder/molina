@@ -324,3 +324,47 @@ button, input { font: inherit; }
   height: 16px;
   margin-top: 1px;
 }
+
+.name-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.name-row .form-field { min-width: 0; }
+
+@media (max-width: 420px) {
+  .name-row { grid-template-columns: 1fr; }
+}
+
+.terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.terms input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: #6366f1;
+  cursor: pointer;
+}
+
+.terms .text-link { font-size: inherit; }
+
+.field-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.form-field input.is-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .12);
+}

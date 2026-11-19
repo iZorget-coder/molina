@@ -135,10 +135,16 @@
     signInWithPopup,
     onAuthStateChanged
   } from '../javascript/firebase.js';
+  import {
+    beginAuthFlow,
+    endAuthFlow,
+    isAuthFlowActive,
+    ensureUserProfile
+  } from '../javascript/profile.js';
 
-  // Redirect if already signed in
+  // Redirect if already signed in (but not while a Google sign-in is still saving the profile)
   onAuthStateChanged(auth, (user) => {
-    if (user) window.location.replace('/pages/app.html');
+    if (user && !isAuthFlowActive()) window.location.replace('/pages/app.html');
   });
 
   const form = document.querySelector('.login-form');
@@ -193,11 +199,20 @@
   const googleBtn = document.querySelector('.google-button');
   googleBtn.addEventListener('click', async () => {
     clearError();
-    const provider = new GoogleAuthProvider();
+    googleBtn.disabled = true;
+    beginAuthFlow();
     try {
-      await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      // First Google sign-in creates the profile (name + avatar); later ones just fill gaps.
+      try {
+        await ensureUserProfile(cred.user);
+      } catch (err) {
+        console.error('Could not save profile', err);
+      }
       window.location.replace('/pages/app.html');
     } catch (error) {
+      endAuthFlow();
+      googleBtn.disabled = false;
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         showError(error.message || 'Google sign-in failed.');
       }

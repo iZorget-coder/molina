@@ -97,9 +97,15 @@
       </div>
 
         <form class="login-form" id="signup-form" action="#" method="post">
-          <div class="form-field">
-            <label for="name">Full name</label>
-            <input id="name" name="name" type="text" placeholder="Your name" autocomplete="name" required>
+          <div class="name-row">
+            <div class="form-field">
+              <label for="first-name">First name</label>
+              <input id="first-name" name="firstName" type="text" placeholder="First name" autocomplete="given-name" required>
+            </div>
+            <div class="form-field">
+              <label for="last-name">Surname</label>
+              <input id="last-name" name="lastName" type="text" placeholder="Surname" autocomplete="family-name" required>
+            </div>
           </div>
 
           <div class="form-field">
@@ -149,9 +155,16 @@
     signInWithPopup,
     onAuthStateChanged
   } from '../javascript/firebase.js';
+  import {
+    beginAuthFlow,
+    endAuthFlow,
+    isAuthFlowActive,
+    ensureUserProfile
+  } from '../javascript/profile.js';
+
 
   onAuthStateChanged(auth, (user) => {
-    if (user) window.location.replace('app.html');
+    if (user && !isAuthFlowActive()) window.location.replace('app.html');
   });
 
   const form = document.getElementById('signup-form');
@@ -160,6 +173,8 @@
   const confirmError = document.getElementById('confirm-error');
   const errorBox = document.getElementById('auth-error');
   const errorText = document.getElementById('auth-error-text');
+  const submitBtn = form.querySelector('.login-button');
+  const googleBtn = document.querySelector('.google-button');
 
   function showError(message) {
     errorText.textContent = message;
@@ -169,8 +184,22 @@
     errorBox.hidden = true;
     errorText.textContent = '';
   }
+  function setBusy(busy) {
+    submitBtn.disabled = busy;
+    googleBtn.disabled = busy;
+  }
 
-  // Existing password-match validation
+
+  async function saveProfileThenEnter(user, names) {
+    try {
+      await ensureUserProfile(user, names);
+    } catch (err) {
+      console.error('Could not save profile', err);
+    }
+    window.location.replace('app.html');
+  }
+
+ 
   function check() {
     const mismatch = confirm.value !== '' && confirm.value !== pw.value;
     confirm.setCustomValidity(mismatch ? "Passwords don't match." : '');
@@ -187,13 +216,19 @@
     clearError();
     if (confirm.value !== pw.value) return;
 
+    const firstName = document.getElementById('first-name').value.trim();
+    const lastName = document.getElementById('last-name').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
+    setBusy(true);
+    beginAuthFlow();
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      window.location.replace('app.html');
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await saveProfileThenEnter(cred.user, { firstName, lastName });
     } catch (error) {
+      endAuthFlow();
+      setBusy(false);
       switch (error.code) {
         case 'auth/email-already-in-use':
           showError('An account with this email already exists. Try logging in instead.');
@@ -213,14 +248,17 @@
     }
   });
 
-  const googleBtn = document.querySelector('.google-button');
   googleBtn.addEventListener('click', async () => {
     clearError();
-    const provider = new GoogleAuthProvider();
+    setBusy(true);
+    beginAuthFlow();
     try {
-      await signInWithPopup(auth, provider);
-      window.location.replace('app.html');
+     
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      await saveProfileThenEnter(cred.user, {});
     } catch (error) {
+      endAuthFlow();
+      setBusy(false);
       if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
         showError(error.message || 'Google sign-in failed.');
       }

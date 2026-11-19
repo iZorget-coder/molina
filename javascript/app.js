@@ -1,6 +1,8 @@
 import { loadNews, bindFilters, loadDashboardNews } from './news.js';
 import { bindWatchlistPage, bindDashboardWatchlist, loadDashboardCards } from './watchlist.js';
 import { loadForecastHeader } from './dashboard-forecasts.js';
+import { bindSettings } from './settings.js';
+import { bindNavAvatar } from './profile.js';
 (function () {
   const container = document.getElementById('view-container');
   const cache = {};
@@ -16,6 +18,7 @@ import { loadForecastHeader } from './dashboard-forecasts.js';
     watchlist: bindWatchlistPage,
     news: initNews,
     article: renderArticle,
+    settings: bindSettings,
   };
 
 function initDashboard() {
@@ -236,6 +239,8 @@ function initDashboard() {
     const name = location.hash.slice(1) || 'dashboard';
     loadView(name);
   });
+
+  bindNavAvatar();   // show the user's photo/initials on the nav avatar
 
   const initial = location.hash.slice(1);
   if (initial && VALID.includes(initial)) {
