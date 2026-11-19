@@ -1,8 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import os
 import re
 import time
@@ -32,7 +29,7 @@ INDEX_CONFIGS = [
     ("XAUUSD_1d_data.csv", "GOLD (XAUUSD)"),
 ]
 
-# ← NEW: map internal index names to frontend market keys
+
 MARKET_KEY_MAP = {
     "S&P 500":       "SPX",
     "NASDAQ":        "NDX",
@@ -113,29 +110,6 @@ os.makedirs(JOURNAL_DIR, exist_ok=True)
 def _normalize_path(raw: str) -> str:
     cleaned = "".join(" " if c.isspace() else c for c in raw)
     return " ".join(cleaned.split())
-
-
-def _safe_savefig(fig, directory: str, filename: str, dpi: int = 120):
-    directory = _normalize_path(directory)
-    os.makedirs(directory, exist_ok=True)
-    attempts = [
-        os.path.join(directory, filename),
-        os.path.join(str(Path.home()), filename),
-    ]
-    last_err = None
-    for path in attempts:
-        for delay in (0, 0.5, 1.5):
-            if delay:
-                time.sleep(delay)
-            try:
-                fig.savefig(path, dpi=dpi)
-                return path
-            except OSError as e:
-                last_err = e
-                if getattr(e, 'errno', None) == 22:
-                    continue
-                break
-    raise last_err if last_err else RuntimeError("savefig failed with no error")
 
 
 def _parse_dates(series):
@@ -1490,141 +1464,6 @@ def _walkforward_report(journal: pd.DataFrame, index_name: str):
 
 
 # ============================================
-# JOURNAL PROGRESS GRAPH
-# ============================================
-
-def save_journal_progress(journal: pd.DataFrame, index_name: str, graph_dir: str):
-    if journal is None or len(journal) == 0:
-        print(f"⏭️  Skipping journal_progress.png for {index_name} — journal empty")
-        return
-    j = journal.copy()
-    j['signal_date'] = pd.to_datetime(j['signal_date'], errors='coerce')
-    j = j.dropna(subset=['signal_date']).sort_values('signal_date').reset_index(drop=True)
-    res = j[j['resolved']].copy()
-    fig, axes = plt.subplots(3, 2, figsize=(16, 13))
-    fig.suptitle(f"{index_name} — Journal Progress", fontsize=14, fontweight='bold')
-    ax = axes[0, 0]
-    ax.plot(j['signal_date'], np.arange(1, len(j) + 1), color='steelblue', linewidth=1.8)
-    ax.set_title(f"Cumulative predictions logged ({len(j)} total)")
-    ax.grid(alpha=0.3); ax.tick_params(axis='x', rotation=30)
-    ax = axes[0, 1]
-    if len(res) >= 5:
-        dc = res['dir_correct'].astype(float).values
-        window = min(20, max(5, len(dc) // 5))
-        rolling = pd.Series(dc).rolling(window, min_periods=3).mean()
-        ax.plot(res['signal_date'], rolling * 100, color='darkorange', linewidth=1.8)
-        ax.axhline(np.nanmean(dc) * 100, color='black', linestyle='--', linewidth=1.2)
-        ax.axhline(100/3, color='red', linestyle=':', linewidth=1.0)
-        ax.set_ylim(0, 100)
-    ax.set_title("Direction accuracy (rolling)")
-    ax.grid(alpha=0.3); ax.tick_params(axis='x', rotation=30)
-    ax = axes[1, 0]
-    traded = res[res['action'].isin(['LONG', 'SHORT'])]
-    if len(traded):
-        outcome_map = {'target': '#2ca02c', 'stopped': '#d62728',
-                       'expired': '#7f7f7f', 'no_fill': '#bcbd22'}
-        traded = traded.copy()
-        traded['outcome'] = traded['outcome'].fillna('unknown')
-        traded['color'] = traded['outcome'].map(outcome_map).fillna('#cccccc')
-        ax.bar(traded['signal_date'], [1] * len(traded), color=traded['color'].values, width=1.0)
-    ax.set_title(f"Trade outcomes over time ({len(traded)} filled)")
-    ax.grid(alpha=0.3, axis='y'); ax.tick_params(axis='x', rotation=30)
-    ax = axes[1, 1]
-    r_series = res[res['filled']]['pnl_r'].dropna()
-    if len(r_series) >= 1:
-        cum_r = r_series.cumsum().values
-        dates = res.loc[r_series.index, 'signal_date']
-        ax.plot(dates, cum_r, color='purple', linewidth=2.0)
-        ax.fill_between(dates, 0, cum_r, where=(cum_r >= 0), color='green', alpha=0.15)
-        ax.fill_between(dates, 0, cum_r, where=(cum_r < 0), color='red', alpha=0.15)
-        ax.axhline(0, color='black', linestyle=':', linewidth=0.8)
-        final_r = cum_r[-1]
-        ax.annotate(f"{final_r:+.2f}R\n({len(r_series)} trades)",
-                    xy=(dates.iloc[-1], final_r), xytext=(-10, 10),
-                    textcoords='offset points', fontsize=9, fontweight='bold', ha='right')
-    ax.set_title("Cumulative R")
-    ax.grid(alpha=0.3); ax.tick_params(axis='x', rotation=30)
-    ax = axes[2, 0]
-    correct = res[(res['filled'] == True) & (res['right_direction'] == True) &
-                  res['mae_atr'].notna() & res['mfe_atr'].notna()]
-    if len(correct):
-        ax.scatter(correct['mae_atr'], correct['mfe_atr'], s=30, alpha=0.7,
-                   c='steelblue', edgecolors='black', linewidth=0.4)
-        max_val = max(correct['mae_atr'].max(), correct['mfe_atr'].max(), 1.0)
-        ax.plot([0, max_val], [0, max_val], color='black', linestyle='--', linewidth=0.9)
-    ax.set_xlabel("MAE (ATR against)"); ax.set_ylabel("MFE (ATR in favour)")
-    ax.set_title(f"Direction-correct MAE vs MFE (n={len(correct)})")
-    ax.grid(alpha=0.3)
-    ax = axes[2, 1]
-    if 'hourly_model_prob' in res.columns:
-        hp = res[res['filled'] & res['hourly_model_prob'].notna() & res['pnl_r'].notna()]
-        if len(hp) >= 10:
-            hp = hp.copy()
-            hp['bin'] = pd.cut(hp['hourly_model_prob'], bins=[0, 0.4, 0.5, 0.6, 0.7, 1.0])
-            grouped = hp.groupby('bin', observed=True).agg(
-                win=('pnl_r', lambda x: (x > 0).mean()),
-                n=('pnl_r', 'size'),
-                mean=('hourly_model_prob', 'mean'),
-            ).reset_index()
-            grouped = grouped[grouped['n'] >= 3]
-            if len(grouped):
-                ax.scatter(grouped['mean'], grouped['win'], s=30 + 15 * np.sqrt(grouped['n']),
-                           color='steelblue', edgecolors='black', linewidth=0.5)
-                for _, r in grouped.iterrows():
-                    ax.annotate(f"n={int(r['n'])}", xy=(r['mean'], r['win']),
-                                xytext=(5, -10), textcoords='offset points', fontsize=7)
-                ax.plot([0, 1], [0, 1], color='black', linestyle='--', linewidth=0.9)
-                ax.set_xlim(0.35, 0.85); ax.set_ylim(0.15, 0.85)
-    ax.set_xlabel("H1 model prob"); ax.set_ylabel("Actual win rate")
-    ax.set_title("H1 zone probability calibration")
-    ax.grid(alpha=0.3)
-    plt.tight_layout(rect=[0, 0, 1, 0.97])
-    path = _safe_savefig(fig, graph_dir, "journal_progress.png")
-    plt.close(fig)
-    print(f"💾 Saved: {path}")
-
-
-def save_cross_index_journal_summary(all_journals: dict, graph_dir: str = "."):
-    if not all_journals:
-        return
-    valid = {k: v for k, v in all_journals.items()
-             if v is not None and len(v) and len(v[v['filled']]) >= 1}
-    if not valid:
-        print(f"⏭️  Skipping journal_summary.png — no filled trades yet")
-        return
-    fig, ax = plt.subplots(figsize=(14, 7))
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-    any_plotted = False
-    for i, (name, j) in enumerate(valid.items()):
-        res = j[j['resolved'] & j['filled']].copy()
-        res['signal_date'] = pd.to_datetime(res['signal_date'], errors='coerce')
-        res = res.sort_values('signal_date')
-        r = res['pnl_r'].dropna()
-        if len(r) < 1:
-            continue
-        cum = r.cumsum().values
-        color = colors[i % len(colors)]
-        if len(r) >= 2:
-            ax.plot(res.loc[r.index, 'signal_date'], cum, color=color, linewidth=1.8,
-                    label=f"{name} ({len(r)} trades, {cum[-1]:+.2f}R)")
-        else:
-            ax.scatter(res.loc[r.index, 'signal_date'], cum, color=color, s=90, zorder=3,
-                       label=f"{name} ({len(r)} trade, {cum[-1]:+.2f}R)")
-        any_plotted = True
-    if not any_plotted:
-        plt.close(fig)
-        return
-    ax.axhline(0, color='black', linestyle=':', linewidth=0.9)
-    ax.set_title("Cross-index cumulative R", fontsize=13, fontweight='bold')
-    ax.set_ylabel("Cumulative R"); ax.set_xlabel("Signal date")
-    ax.legend(loc='best', fontsize=9); ax.grid(alpha=0.3)
-    plt.tight_layout()
-    path = _safe_savefig(fig, graph_dir, "journal_summary.png")
-    plt.close(fig)
-    print(f"💾 Saved: {path}")
-
-
-# ============================================
 # MASTER PIPELINE
 # ============================================
 
@@ -2441,176 +2280,7 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
         print("="*60)
         return predicted_state, probs, row, trade, baseline, adapt_info
 
-    # ---------------- GRAPHS ----------------
-    def save_price_with_prediction(row, probs, filename="prediction_price.png"):
-        input_date = row['Date'].iloc[0]
-        idx_matches = df_all.index[df_all['Date'] == input_date]
-        idx = int(idx_matches[0]) if len(idx_matches) else len(df_all) - 1
-        window = df_all.iloc[max(0, idx - 120):idx + 1]
-        last_close = row['Close'].iloc[0]
-        next_date = _next_trading_date(row['Date'].iloc[0])
-        pred_class = max(probs, key=probs.get)
-        confidence = probs[pred_class]
-        color = {'UP': 'green', 'DOWN': 'red', 'CONSOLIDATION': 'goldenrod'}[pred_class]
-        fig, ax = plt.subplots(figsize=(14, 7))
-        ax.plot(window['Date'], window['Close'], color='steelblue', linewidth=1.8)
-        ax.axhline(last_close, color=color, linestyle='--', linewidth=1.5, alpha=0.8)
-        ax.set_title(f"{index_name} — {pred_class} for {next_date.date()} | Conf {confidence:.1%}",
-                     fontsize=13, fontweight='bold')
-        ax.grid(alpha=0.3)
-        plt.tight_layout()
-        path = _safe_savefig(fig, INDEX_GRAPH_DIR, filename)
-        plt.close(fig)
-        print(f"💾 {path}")
-
-    def save_test_predictions_chart():
-        fig, ax = plt.subplots(figsize=(16, 7))
-        ax.plot(test['Date'].values, test['Close'].values, color='black', linewidth=1.4)
-        correct = (y_pred == y_test.values)
-        ax.scatter(test['Date'].values[correct], test['Close'].values[correct],
-                   color='green', s=22, alpha=0.7, label=f'Correct ({correct.sum()})')
-        ax.scatter(test['Date'].values[~correct], test['Close'].values[~correct],
-                   color='red', s=22, alpha=0.7, label=f'Wrong ({(~correct).sum()})')
-        ax.set_title(f"{index_name} — Test Accuracy: {accuracy:.2%}", fontweight='bold')
-        ax.legend(); ax.grid(alpha=0.3)
-        plt.tight_layout()
-        path = _safe_savefig(fig, INDEX_GRAPH_DIR, "test_predictions.png")
-        plt.close(fig)
-        print(f"💾 {path}")
-
-    def save_confusion_matrix():
-        cm = confusion_matrix(y_test, y_pred, labels=[0, 1, 2])
-        fig, ax = plt.subplots(figsize=(6.5, 5.5))
-        im = ax.imshow(cm, cmap='Blues')
-        ax.set_xticks(range(3)); ax.set_yticks(range(3))
-        ax.set_xticklabels(CLASS_ORDER); ax.set_yticklabels(CLASS_ORDER)
-        for i in range(3):
-            for j in range(3):
-                ax.text(j, i, str(cm[i, j]), ha='center', va='center',
-                        color='white' if cm[i, j] > cm.max() / 2 else 'black', fontsize=13)
-        ax.set_xlabel('Predicted'); ax.set_ylabel('Actual')
-        ax.set_title(f'{index_name} — Confusion Matrix', fontweight='bold')
-        plt.colorbar(im, ax=ax)
-        plt.tight_layout()
-        path = _safe_savefig(fig, INDEX_GRAPH_DIR, "confusion_matrix.png")
-        plt.close(fig)
-        print(f"💾 {path}")
-
-    def save_feature_importance():
-        top = importance_df.head(30).iloc[::-1]
-        fig, ax = plt.subplots(figsize=(10, 10))
-        ax.barh(top['Feature'], top['Importance'], color='teal')
-        ax.set_title(f'{index_name} — Top 30 Features (daily model)', fontweight='bold')
-        ax.grid(alpha=0.3, axis='x')
-        plt.tight_layout()
-        path = _safe_savefig(fig, INDEX_GRAPH_DIR, "feature_importance.png")
-        plt.close(fig)
-        print(f"💾 {path}")
-
-    def save_probability_over_time():
-        fig, ax = plt.subplots(figsize=(16, 6))
-        ax.stackplot(test['Date'].values,
-                     y_proba[:, 0], y_proba[:, 1], y_proba[:, 2],
-                     colors=['#d62728', '#bbbbbb', '#2ca02c'],
-                     labels=['P(DOWN)', 'P(CONS)', 'P(UP)'], alpha=0.85)
-        ax.set_ylim(0, 1); ax.legend(loc='upper left', ncol=3)
-        ax.set_title(f'{index_name} — State Probabilities (test)', fontweight='bold')
-        ax.grid(alpha=0.3)
-        plt.tight_layout()
-        path = _safe_savefig(fig, INDEX_GRAPH_DIR, "state_probabilities.png")
-        plt.close(fig)
-        print(f"💾 {path}")
-
-    def save_market_structure_chart():
-        fig, ax = plt.subplots(figsize=(16, 8))
-        ax.plot(df_all['Date'], df_all['Close'], color='black', linewidth=1.0, alpha=0.6)
-        mb = df_all[df_all['Macro_BOS_Bull'] == 1]
-        mr = df_all[df_all['Macro_BOS_Bear'] == 1]
-        ax.scatter(mb['Date'], mb['Close'], color='darkgreen', marker='^', s=70, alpha=0.5, label='BOS Bull')
-        ax.scatter(mr['Date'], mr['Close'], color='darkred', marker='v', s=70, alpha=0.5, label='BOS Bear')
-        ax.set_title(f'{index_name} — Market Structure', fontweight='bold')
-        ax.legend(); ax.grid(alpha=0.3)
-        plt.tight_layout()
-        path = _safe_savefig(fig, INDEX_GRAPH_DIR, "market_structure.png")
-        plt.close(fig)
-        print(f"💾 {path}")
-
-    def save_trade_recommendation_chart(row, trade, all_scored_zones=None, filename="trade_recommendation.png"):
-        if trade['action'] == 'NO TRADE':
-            print(f"⏭️  Skipping trade chart — no trade")
-            return
-        input_date = row['Date'].iloc[0]
-        idx_matches = df_all.index[df_all['Date'] == input_date]
-        idx = int(idx_matches[0]) if len(idx_matches) else len(df_all) - 1
-        window = df_all.iloc[max(0, idx - 60):idx + 1]
-        close_t = float(row['Close'].iloc[0])
-        last_date = row['Date'].iloc[0]
-        predicted_date = _next_trading_date(last_date)
-        hm = trade.get('hourly_meta')
-        fig, ax = plt.subplots(figsize=(15, 9))
-        ax.plot(window['Date'], window['Close'], color='steelblue', linewidth=1.8, zorder=3)
-        if hm is not None:
-            ax.axhspan(hm['zone_bottom'], hm['zone_top'], color='purple', alpha=0.15, zorder=1,
-                       label=f"{hm['kind'].upper()} zone "
-                             f"({hm['zone_bottom']:.2f}–{hm['zone_top']:.2f}) "
-                             f"P={hm['model_prob']:.2f}")
-            if hm.get('ote_band_low') is not None and hm.get('ote_band_high') is not None:
-                ax.axhspan(hm['ote_band_low'], hm['ote_band_high'], color='gold', alpha=0.15, zorder=1,
-                           label=f"OTE band 0.62–0.79")
-                if hm.get('ote_705') is not None:
-                    ax.axhline(hm['ote_705'], color='gold', linestyle='-.', linewidth=1.2,
-                               zorder=4, label=f"OTE 0.705 ({hm['ote_705']:.2f})")
-            sa = trade.get('stop_anchor')
-            if sa and sa.get('zone') is not None:
-                z = sa['zone']
-                ax.axhspan(z['bottom'], z['top'], color='red', alpha=0.20, zorder=1,
-                           label=f"Stop anchor {z['kind'].upper()} P={z['model_prob']:.2f}")
-            ta = trade.get('target_anchor')
-            if ta and ta.get('zone') is not None:
-                z = ta['zone']
-                ax.axhspan(z['bottom'], z['top'], color='green', alpha=0.20, zorder=1,
-                           label=f"Target anchor {z['kind'].upper()} P={z['model_prob']:.2f}")
-            if all_scored_zones:
-                for z in all_scored_zones:
-                    if z.get('model_prob', 0) < STOP_CONF_MIN:
-                        continue
-                    if abs(z['mid'] - close_t) / close_t > 0.06:
-                        continue
-                    ax.axhspan(z['bottom'], z['top'],
-                               color=('green' if z['direction'] == 'bull' else 'red'),
-                               alpha=min(0.25, z['model_prob'] * 0.35), zorder=0)
-        ax.axhline(trade['entry'], color='#8e44ad', linestyle='-', linewidth=2.2,
-                   zorder=5, label=f"Entry: {trade['entry']:.2f}")
-        ax.axhline(trade['stop_loss'], color='red', linestyle='--', linewidth=1.6,
-                   zorder=4, label=f"Stop: {trade['stop_loss']:.2f}")
-        ax.axhline(trade['take_profit'], color='green', linestyle='--', linewidth=1.6,
-                   zorder=4, label=f"Target: {trade['take_profit']:.2f}")
-        ax.axhspan(trade['stop_loss'], trade['entry'], color='red', alpha=0.05, zorder=0)
-        ax.axhspan(trade['entry'], trade['take_profit'], color='green', alpha=0.05, zorder=0)
-        ax.scatter([last_date], [close_t], color='gold', s=140, zorder=8,
-                   edgecolor='black', linewidth=1.4, label=f"Close: {close_t:.2f}")
-        x_max = window['Date'].max()
-        ax.set_xlim(window['Date'].min(),
-                     x_max + pd.Timedelta(days=int((x_max - window['Date'].min()).days * 0.22)))
-        ax.axvline(predicted_date, color='#8e44ad', linestyle='--', linewidth=2.2, zorder=6,
-                   label=f"Trade window: {predicted_date.date()}")
-        title = (f"{index_name} — {trade['action']} | R:R {trade['risk_reward']} | "
-                 f"{trade['conviction']} ({trade['confidence']:.1%})")
-        if hm is not None:
-            title += f"\nH1 {hm['kind'].upper()} zone prob={hm['model_prob']:.1%}, "
-            title += f"{hm['session']} {hm['hour_utc']:02d}:00 UTC"
-        ax.set_title(title, fontsize=11, fontweight='bold')
-        ax.set_ylabel("Price"); ax.set_xlabel("Date")
-        ax.legend(loc='upper left', fontsize=8, framealpha=0.9)
-        ax.grid(alpha=0.3)
-        plt.tight_layout()
-        path = _safe_savefig(fig, INDEX_GRAPH_DIR, filename)
-        plt.close(fig)
-        print(f"💾 {path}")
-
     # ---------------- RUN ----------------
-    INDEX_GRAPH_DIR = _normalize_path(f"{index_name} graphs")
-    os.makedirs(INDEX_GRAPH_DIR, exist_ok=True)
     LATEST_DATE = df['Date'].max().date()
     print(f"\n🔎 Latest date: {LATEST_DATE}")
 
@@ -2683,37 +2353,6 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
             else pd.DataFrame([rec])
         journal = _coerce_journal(journal)
         _save_journal(journal, journal_file)
-        save_journal_progress(journal, index_name, INDEX_GRAPH_DIR)
-
-    print("\n🎨 Generating graphs...")
-    save_price_with_prediction(row, probs)
-    save_test_predictions_chart()
-    save_confusion_matrix()
-    save_feature_importance()
-    save_probability_over_time()
-    save_market_structure_chart()
-
-    chart_zones = None
-    if HAS_HOURLY and HOURLY_OPT_ENABLED and trade['action'] in ('LONG', 'SHORT'):
-        try:
-            daily_ctx = {
-                'dealing_pos': float(row['Dealing_Pos'].iloc[0]) if 'Dealing_Pos' in row.columns else 0.5,
-                'macro_struct': float(row['Macro_Structure'].iloc[0]),
-                'prob_up': float(probs.get('UP', 0.33)),
-                'prob_down': float(probs.get('DOWN', 0.33)),
-                'prob_cons': float(probs.get('CONSOLIDATION', 0.34)),
-                'dist_to_pdh': float(row['Dist_To_PDH'].iloc[0]) if 'Dist_To_PDH' in row.columns else 0.0,
-                'dist_to_pdl': float(row['Dist_To_PDL'].iloc[0]) if 'Dist_To_PDL' in row.columns else 0.0,
-            }
-            if h1_model.get("accepted"):
-                chart_zones = _score_zones_learned(
-                    hourly_df, trade['action'], len(hourly_df) - 1,
-                    h1_model, daily_ctx, index_name,
-                    zones_cache=hourly_zones_cached,
-                    trend_cache=hourly_trend_cached)
-        except Exception:
-            pass
-    save_trade_recommendation_chart(row, trade, all_scored_zones=chart_zones)
 
     return {
         'index_name': index_name,
@@ -2738,6 +2377,39 @@ print("\n" + "="*80)
 print("🚀 MULTI-INDEX PIPELINE STARTING")
 print("="*80)
 
+def _json_num(v):
+    """float for JSON, or None for None/NaN (json.dump would emit invalid NaN)."""
+    if v is None:
+        return None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    return None if np.isnan(v) else v
+
+
+def _trade_for_json(trade: dict) -> dict:
+    """Entry-position data for predictions.json."""
+    if trade is None or trade.get('action') not in ('LONG', 'SHORT'):
+        return {"action": "NO TRADE", "reason": (trade or {}).get('reason', '')}
+    entry = _json_num(trade.get('entry'))
+    stop = _json_num(trade.get('stop_loss'))
+    target = _json_num(trade.get('take_profit'))
+    return {
+        "action":       trade['action'],                    # "LONG" | "SHORT"
+        "entry":        entry,
+        "stop_loss":    stop,
+        "take_profit":  target,
+        "risk":         round(abs(entry - stop), 2) if entry is not None and stop is not None else None,
+        "reward":       round(abs(target - entry), 2) if entry is not None and target is not None else None,
+        "risk_reward":  _json_num(trade.get('risk_reward')),
+        "conviction":   trade.get('conviction'),
+        "entry_type":   trade.get('entry_type'),
+        "stop_source":  trade.get('stop_source'),
+        "target_source": trade.get('target_source'),
+    }
+
+
 dxy_df = load_dxy_series(DXY_CSV_PATH)
 results_list = []   # ← renamed from `results` so the new dict can use that name
 predictions = {}    # ← NEW: per-market prediction dict
@@ -2755,6 +2427,7 @@ for csv_path, index_name in INDEX_CONFIGS:
                 "confidence": float(res['probs'][res['predicted_state']]),
                 "close":      float(res['close']),
                 "date":       str(res['latest_date']),       # data date, not run date
+                "trade":      _trade_for_json(res['trade']), # entry position (or NO TRADE)
             }
     except Exception as e:
         print(f"\n❌ Error processing {index_name}: {e}")
@@ -2792,10 +2465,6 @@ else:
                   f"stop {trade['stop_loss']:.2f} ({trade['stop_source']})  "
                   f"target {trade['take_profit']:.2f} ({trade['target_source']})  "
                   f"R:R {trade['risk_reward']}{tag}")
-
-    print("\n🎨 Generating cross-index journal summary...")
-    save_cross_index_journal_summary(
-        {r['index_name']: r['journal'] for r in results_list if r.get('journal') is not None})
 
     print("\n" + "="*80)
     print("✅ ALL INDEXES PROCESSED")
