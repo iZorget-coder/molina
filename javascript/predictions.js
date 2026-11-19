@@ -1,0 +1,167 @@
+
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { auth, onAuthStateChanged, db } from './firebase.js';
+
+/* ---------- The five markets the app supports ---------- */
+export const MARKETS = [
+  { symbol: 'SPX',    name: 'S&P 500',         type: 'Index' },
+  { symbol: 'NDX',    name: 'NASDAQ',          type: 'Index' },
+  { symbol: 'DJI',    name: 'DOW JONES',       type: 'Index' },
+  { symbol: 'XAUUSD', name: 'Gold',            type: 'Commodity' },
+  { symbol: 'DXY',    name: 'US Dollar Index', type: 'FX' },
+];
+
+/* ---------- Direction helpers ---------- */
+const DIRECTIONS = {
+  UP:            { key: 'up',   label: 'UP',            arrow: '▲' },
+  DOWN:          { key: 'down', label: 'DOWN',          arrow: '▼' },
+  CONSOLIDATION: { key: 'flat', label: 'CONSOLIDATION', arrow: '◆' },
+};
+const NO_FORECAST = { key: 'none', label: 'NO FORECAST', arrow: '' };
+
+export const directionOf = (bias) =>
+  DIRECTIONS[String(bias || '').toUpperCase()] || NO_FORECAST;
+
+export function countDirections(data) {
+  const counts = { up: 0, down: 0, flat: 0 };
+  if (!data) return counts;
+  for (const p of data.list) {
+    if (p.dir in counts) counts[p.dir] += 1;
+  }
+  return counts;
+}
+
+/* ---------- Formatting ---------- */
+const formatPrice = (n) =>
+  typeof n === 'number'
+    ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '—';
+
+export function formatChange(pct) {
+  if (typeof pct !== 'number' || !Number.isFinite(pct)) return '—';
+  const v = Math.round(pct * 100) / 100;
+  return `${v < 0 ? '-' : '+'}${Math.abs(v).toFixed(2)}%`;
+}
+
+// dates are plain YYYY-MM-DD strings
+const utc = (iso) => {
+  const [y, m, d] = String(iso).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+};
+
+export const formatDay = (iso) =>
+  iso
+    ? utc(iso)
+        .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+        .replace(',', '')
+    : '';
+
+export const formatLong = (iso) =>
+  iso
+    ? utc(iso)
+        .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+        .replace(',', '')
+    : '';
+
+export const weekdayLong = (iso) =>
+  iso ? utc(iso).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' }) : '';
+
+/* ---------- Shape the Firestore documents for the UI ---------- */
+
+
+function previousClose(olderPredictions, symbol, closeDate) {
+  for (const preds of olderPredictions) {
+    const p = preds[symbol];
+    if (p && typeof p.close === 'number' && p.date && p.date !== closeDate) return p.close;
+  }
+  return null;
+}
+
+function normalise(docId, data, olderPredictions) {
+  const raw = data.predictions || {};
+  const bySymbol = {};
+
+  for (const m of MARKETS) {
+    const p = raw[m.symbol];
+    const direction = directionOf(p?.bias);
+    const hasForecast = Boolean(p) && direction.key !== 'none';
+    // stored as 0–1, shown as a whole percentage
+    const confidence = typeof p?.confidence === 'number' ? Math.round(p.confidence * 100) : null;
+    const close = typeof p?.close === 'number' ? p.close : null;
+    const closeDate = p?.date ?? null;
+
+    let change = null;
+    if (close !== null && closeDate) {
+      const prev = previousClose(olderPredictions, m.symbol, closeDate);
+      if (prev) change = (close / prev - 1) * 100;
+    }
+
+    bySymbol[m.symbol] = {
+      ...m,
+      sub: `${m.symbol} · ${m.type}`,
+      hasForecast,
+      bias: p?.bias ?? null,
+      direction,
+      dir: direction.key,               
+      confidence,                      
+      close,
+      closeDate,
+      change,                            
+      price: formatPrice(close),       
+      changeText: formatChange(change), 
+      label: hasForecast
+        ? `${direction.arrow} ${direction.label}${confidence !== null ? ` ${confidence}%` : ''}`
+        : 'No forecast',
+    };
+  }
+
+  const closeDates = Object.values(raw).map((p) => p?.date).filter(Boolean).sort();
+
+  return {
+    forecastDate: docId,                                                        
+    closeDate: closeDates.length ? closeDates[closeDates.length - 1] : null,    
+    generatedAt: data.generated_at?.toDate ? data.generated_at.toDate() : null,
+    bySymbol,                                                                   
+    list: MARKETS.map((m) => bySymbol[m.symbol]),                               
+  };
+}
+
+/* ---------- Fetch the newest forecast documents ---------- */
+ 
+const authReady = new Promise((resolve) => {
+  const stop = onAuthStateChanged(auth, (user) => {
+    stop();
+    resolve(user);
+  });
+});
+
+const CACHE_MS = 10 * 60 * 1000;
+let cached = null;
+let cachedAt = 0;
+let inflight = null;
+
+export function fetchLatestPredictions({ force = false } = {}) {
+  if (cached && !force && Date.now() - cachedAt < CACHE_MS) return Promise.resolve(cached);
+  if (inflight) return inflight;
+
+  inflight = (async () => {
+    await authReady;
+     
+    const q = query(collection(db, 'daily_predictions'), orderBy('generated_at', 'desc'), limit(5));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+
+    const [latest, ...older] = snap.docs;
+    cached = normalise(
+      latest.id,
+      latest.data(),
+      older.map((d) => d.data().predictions || {})
+    );
+    cachedAt = Date.now();
+    return cached;
+  })().finally(() => {
+    inflight = null;
+  });
+
+  return inflight;
+}

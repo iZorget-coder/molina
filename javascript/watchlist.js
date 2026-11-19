@@ -1,14 +1,8 @@
-// javascript/watchlist.js
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth, onAuthStateChanged } from './firebase.js';
+import { MARKETS, fetchLatestPredictions } from './predictions.js';
 
-const ALL_MARKETS = [
-  { symbol: 'SPX',    name: 'S&P 500',         sub: 'SPX · Index',        price: '5,892.40',  dir: 'up',   label: '▲ UP 62%',            change: '+0.42%', confidence: 62 },
-  { symbol: 'NDX',    name: 'NASDAQ',          sub: 'NDX · Index',        price: '20,431.18', dir: 'down', label: '▼ DOWN 58%',          change: '-0.71%', confidence: 58 },
-  { symbol: 'DJI',    name: 'DOW JONES',       sub: 'DJI · Index',        price: '43,128.65', dir: 'flat', label: '◆ CONSOLIDATION 51%', change: '+0.05%', confidence: 51 },
-  { symbol: 'XAUUSD', name: 'Gold',            sub: 'XAUUSD · Commodity', price: '2,447.85',  dir: 'up',   label: '▲ UP 62%',            change: '+0.88%', confidence: 62 },
-  { symbol: 'DXY',    name: 'US Dollar Index', sub: 'DXY · FX',           price: '104.27',    dir: 'down', label: '▼ DOWN 55%',          change: '-0.31%', confidence: 55 },
-];
+const DEFAULT_WATCHLIST = ['SPX'];
 
 let cachedSymbols = null;
 let authReady = null;
@@ -30,7 +24,7 @@ async function fetchWatchlist() {
 
   const user = await whenAuthReady();
   if (!user) {
-    cachedSymbols = ['SPX'];
+    cachedSymbols = [...DEFAULT_WATCHLIST];
     return cachedSymbols;
   }
 
@@ -40,7 +34,7 @@ async function fetchWatchlist() {
   if (snap.exists() && Array.isArray(snap.data().watchlist)) {
     cachedSymbols = snap.data().watchlist;
   } else {
-    cachedSymbols = ['SPX'];
+    cachedSymbols = [...DEFAULT_WATCHLIST];
     await setDoc(ref, {
       watchlist: cachedSymbols,
       updatedAt: new Date().toISOString(),
@@ -59,14 +53,43 @@ async function saveWatchlist(symbols) {
   }, { merge: true });
 }
 
+/* ---------- Live forecasts (Firestore: daily_predictions) ---------- */
+
+let live = null; // latest forecast snapshot, or null when none has been written yet
+
+// Throws if Firestore refuses the read, so each view can show its own error state.
+async function loadLive() {
+  live = await fetchLatestPredictions();
+  return live;
+}
+
+// One market, ready to render: { symbol, name, sub, dir, label, confidence, price, change, changeText }
 function getMarket(symbol) {
-  return ALL_MARKETS.find(m => m.symbol === symbol);
+  const meta = MARKETS.find(m => m.symbol === symbol);
+  if (!meta) return null;
+
+  return live?.bySymbol[symbol] || {
+    ...meta,
+    sub: `${meta.symbol} · ${meta.type}`,
+    hasForecast: false,
+    dir: 'none',
+    label: 'No forecast',
+    confidence: null,
+    price: '—',
+    change: null,
+    changeText: '—',
+  };
+}
+
+// Colour for the day-on-day change; moves under 0.1% count as flat
+function changeClass(market) {
+  if (market.change == null || Math.abs(market.change) < 0.1) return 'flat';
+  return market.change > 0 ? 'up' : 'down';
 }
 
 /* ---------- Watchlist page rendering ---------- */
 
 function watchRowMarkup(market) {
-  const dirClass = market.dir === 'up' ? 'up' : market.dir === 'down' ? 'down' : 'flat';
   return `
     <tr data-category="${market.dir}">
       <td class="col-market">
@@ -77,7 +100,7 @@ function watchRowMarkup(market) {
       <td class="col-pred">
         <span class="tag tag--${market.dir}">${market.label}</span>
       </td>
-      <td class="col-change num ${dirClass}">${market.change}</td>
+      <td class="col-change num ${changeClass(market)}">${market.changeText}</td>
       <td class="col-actions num">
         <button class="btn-remove" data-remove="${market.symbol}" aria-label="Remove ${market.name} from watchlist">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -94,7 +117,7 @@ export async function loadWatchlistPage() {
   tbody.innerHTML = '<tr><td colspan="5" class="view-loading">Loading watchlist…</td></tr>';
 
   try {
-    const symbols = await fetchWatchlist();
+    const [symbols] = await Promise.all([fetchWatchlist(), loadLive()]);
     const markets = symbols.map(getMarket).filter(Boolean);
 
     if (!markets.length) {
@@ -104,7 +127,7 @@ export async function loadWatchlistPage() {
     }
 
     const countEl = document.getElementById('watchlist-count');
-    if (countEl) countEl.textContent = `${symbols.length} markets`;
+    if (countEl) countEl.textContent = `${symbols.length} ${symbols.length === 1 ? 'market' : 'markets'}`;
   } catch (err) {
     console.error(err);
     tbody.innerHTML = '<tr><td colspan="5" class="view-error">Could not load watchlist.</td></tr>';
@@ -114,7 +137,6 @@ export async function loadWatchlistPage() {
 /* ---------- Dashboard sidebar rendering ---------- */
 
 function dashboardItemMarkup(market) {
-  const dirClass = market.dir === 'up' ? 'up' : market.dir === 'down' ? 'down' : 'flat';
   return `
     <li class="watch__item">
       <div class="watch__row">
@@ -126,7 +148,7 @@ function dashboardItemMarkup(market) {
       </div>
       <div class="watch__row">
         <span class="badge badge--${market.dir}">${market.label}</span>
-        <span class="change ${dirClass}">${market.change}</span>
+        <span class="change ${changeClass(market)}">${market.changeText}</span>
       </div>
     </li>
   `;
@@ -137,7 +159,7 @@ export async function loadDashboardWatchlist() {
   if (!list) return;
 
   try {
-    const symbols = await fetchWatchlist();
+    const [symbols] = await Promise.all([fetchWatchlist(), loadLive()]);
     const markets = symbols.map(getMarket).filter(Boolean);
 
     list.innerHTML = markets.length
@@ -145,7 +167,7 @@ export async function loadDashboardWatchlist() {
       : '<li class="watch__item"><p class="view-empty">No markets yet.</p></li>';
 
     const countEl = document.querySelector('.sidebar__head .muted');
-    if (countEl) countEl.textContent = `${symbols.length} markets`;
+    if (countEl) countEl.textContent = `${symbols.length} ${symbols.length === 1 ? 'market' : 'markets'}`;
   } catch (err) {
     console.error(err);
     list.innerHTML = '<li class="watch__item"><p class="view-error">Could not load watchlist.</p></li>';
@@ -154,6 +176,7 @@ export async function loadDashboardWatchlist() {
 
 /* ---------- Dashboard forecast cards ---------- */
 
+// Decorative only: the line is generated from the forecast direction, not real price history
 function sparkPolyline(market) {
   const seedBase = market.symbol.split('').reduce((a, c) => a + c.charCodeAt(0), 7);
   let seed = seedBase;
@@ -174,30 +197,27 @@ function sparkPolyline(market) {
 }
 
 function cardMarkup(market) {
-  const pillClass = market.dir === 'up' ? 'pill--up' : market.dir === 'down' ? 'pill--down' : 'pill--flat';
-  const pillLabel = market.dir === 'up' ? '▲ UP' : market.dir === 'down' ? '▼ DOWN' : '◆ CONSOLIDATION';
-  const ticker = market.sub.split(' · ')[0];
-
-  const changeClass = market.change.startsWith('-') ? 'down'
-                    : market.change === '+0.00%' ? 'flat'
-                    : 'up';
+  const pillLabel = { up: '▲ UP', down: '▼ DOWN', flat: '◆ CONSOLIDATION' }[market.dir] || 'NO FORECAST';
+  const confidence = market.confidence ?? 0;
+  const confidenceText = market.confidence === null ? '—' : `${market.confidence}%`;
+  const sparkDir = market.dir === 'none' ? 'flat' : market.dir;
 
   return `
     <article class="card">
       <div class="card__id">
-        <div class="card__title">${market.name} <span class="ticker">${ticker}</span></div>
-        <span class="pill ${pillClass}">${pillLabel}</span>
+        <div class="card__title">${market.name} <span class="ticker">${market.symbol}</span></div>
+        <span class="pill pill--${market.dir}">${pillLabel}</span>
       </div>
       <div class="card__conf">
-        <div class="conf__row"><span class="conf__label">Confidence</span><span class="conf__value">${market.confidence}%</span></div>
-        <div class="progress"><div class="progress__bar" style="width:${market.confidence}%"></div></div>
+        <div class="conf__row"><span class="conf__label">Confidence</span><span class="conf__value">${confidenceText}</span></div>
+        <div class="progress"><div class="progress__bar" style="width:${confidence}%"></div></div>
         <div class="conf__row conf__row--small">
           <span class="muted-light">Last close <strong>${market.price}</strong></span>
-          <span class="${changeClass}">${market.change}</span>
+          <span class="${changeClass(market)}">${market.changeText}</span>
         </div>
       </div>
       <div class="card__chart">
-        <svg viewBox="0 0 200 56" preserveAspectRatio="none" class="spark spark--${market.dir}">
+        <svg viewBox="0 0 200 56" preserveAspectRatio="none" class="spark spark--${sparkDir}">
           <polyline points="${sparkPolyline(market)}"/>
         </svg>
         <span class="chart__label">Last 24 sessions</span>
@@ -211,7 +231,7 @@ export async function loadDashboardCards() {
   if (!container) return;
 
   try {
-    const symbols = await fetchWatchlist();
+    const [symbols] = await Promise.all([fetchWatchlist(), loadLive()]);
     const markets = symbols.map(getMarket).filter(Boolean);
 
     if (!markets.length) {
@@ -233,13 +253,22 @@ function renderModalRows(dialog, currentSymbols) {
   rows.forEach(row => {
     const symbol = row.dataset.symbol;
     const input = row.querySelector('input');
-    const inList = currentSymbols.includes(symbol);
-    input.disabled = inList;
+    input.disabled = currentSymbols.includes(symbol);
     input.checked = false;
+
+    // show the live price and forecast instead of the placeholder text in the markup
+    const market = getMarket(symbol);
+    const priceEl = row.querySelector('.add-modal__price');
+    const tagEl = row.querySelector('.add-modal__tag');
+    if (market && priceEl) priceEl.textContent = market.price;
+    if (market && tagEl) {
+      tagEl.textContent = market.label;
+      tagEl.className = `add-modal__tag add-modal__tag--${market.dir}`;
+    }
   });
 
   const empty = dialog.querySelector('.add-modal__empty');
-  if (empty) empty.hidden = currentSymbols.length < ALL_MARKETS.length;
+  if (empty) empty.hidden = currentSymbols.length < MARKETS.length;
 
   const countEl = dialog.querySelector('[data-count]');
   if (countEl) countEl.textContent = '0';
@@ -260,7 +289,11 @@ export async function openAddMarketModal() {
   const dialog = document.getElementById('add-market-modal');
   if (!dialog) return;
 
-  const currentSymbols = await fetchWatchlist();
+  // the modal still works if the forecasts can't be read; the rows just keep their placeholder text
+  const [currentSymbols] = await Promise.all([
+    fetchWatchlist(),
+    loadLive().catch(err => console.error('Could not load forecasts for the modal', err)),
+  ]);
   renderModalRows(dialog, currentSymbols);
 
   dialog.showModal();
@@ -285,7 +318,8 @@ export async function openAddMarketModal() {
 
         if (!selected.length) return;
 
-        const merged = Array.from(new Set([...currentSymbols, ...selected]));
+        // read the current list at click time, so a market added earlier isn't lost
+        const merged = Array.from(new Set([...(cachedSymbols || []), ...selected]));
         saveWatchlist(merged)
           .then(() => {
             dialog.close();
