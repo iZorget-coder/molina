@@ -6,3 +6,9 @@ dist/
 .DS_Store
 *.log
 .vscode/
+# Model artifacts
+* graphs/
+journal/
+*.ipynb_checkpoints/
+intraday_output.ipynb
+market_output.ipynb
