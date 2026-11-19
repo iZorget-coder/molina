@@ -1,9 +1,12 @@
 import { auth, signOut } from './firebase.js';
 import { getUserProfile, renderAvatar } from './profile.js';
+import { renderSettingsAiUsage } from './ai-usage.js';
 
 // Runs every time the settings view is injected.
 export async function bindSettings() {
-  const logoutBtn = document.querySelector('[data-logout]');
+    renderSettingsAiUsage();
+
+    const logoutBtn = document.querySelector('[data-logout]');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
       logoutBtn.disabled = true;

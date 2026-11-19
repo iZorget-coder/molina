@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth, onAuthStateChanged } from './firebase.js';
 import { MARKETS, fetchLatestPredictions } from './predictions.js';
+import { selectMarket } from './markets.js';
 
 const DEFAULT_WATCHLIST = ['SPX'];
 
@@ -55,15 +56,14 @@ async function saveWatchlist(symbols) {
 
 /* ---------- Live forecasts (Firestore: daily_predictions) ---------- */
 
-let live = null;  
+let live = null;
 
- 
 async function loadLive() {
   live = await fetchLatestPredictions();
   return live;
 }
 
-// One market, ready to render: { symbol, name, sub, dir, label, confidence, price, change, changeText }
+ 
 function getMarket(symbol) {
   const meta = MARKETS.find(m => m.symbol === symbol);
   if (!meta) return null;
@@ -81,17 +81,31 @@ function getMarket(symbol) {
   };
 }
 
-// Colour for the day-on-day change; moves under 0.1% count as flat
+ 
 function changeClass(market) {
   if (market.change == null || Math.abs(market.change) < 0.1) return 'flat';
   return market.change > 0 ? 'up' : 'down';
+}
+
+/* ---------- Navigation to the Markets view ---------- */
+
+ 
+function openMarket(symbol) {
+  selectMarket(symbol);
+  location.hash = 'markets';
 }
 
 /* ---------- Watchlist page rendering ---------- */
 
 function watchRowMarkup(market) {
   return `
-    <tr data-category="${market.dir}">
+    <tr
+      data-category="${market.dir}"
+      data-open-market="${market.symbol}"
+      tabindex="0"
+      role="link"
+      aria-label="View ${market.name} market details"
+    >
       <td class="col-market">
         <div class="market__name">${market.name}</div>
         <div class="market__type">${market.sub}</div>
@@ -175,7 +189,6 @@ export async function loadDashboardWatchlist() {
 }
 
 /* ---------- Dashboard forecast cards ---------- */
-
 
 function sparkPolyline(market) {
   const seedBase = market.symbol.split('').reduce((a, c) => a + c.charCodeAt(0), 7);
@@ -270,7 +283,6 @@ function renderModalRows(dialog, currentSymbols) {
     input.disabled = currentSymbols.includes(symbol);
     input.checked = false;
 
- 
     const market = getMarket(symbol);
     const priceEl = row.querySelector('.add-modal__price');
     const tagEl = row.querySelector('.add-modal__tag');
@@ -305,7 +317,6 @@ export async function openAddMarketModal() {
   const dialog = document.getElementById('add-market-modal');
   if (!dialog) return;
 
- 
   const [currentSymbols] = await Promise.all([
     fetchWatchlist(),
     loadLive().catch(err => console.error('Could not load forecasts for the modal', err)),
@@ -334,7 +345,6 @@ export async function openAddMarketModal() {
 
         if (!selected.length) return;
 
-     
         const merged = Array.from(new Set([...(cachedSymbols || []), ...selected]));
         saveWatchlist(merged)
           .then(() => {
@@ -357,18 +367,36 @@ export function bindWatchlistPage() {
   const tbody = document.querySelector('#watchlist-table tbody');
   if (tbody && !tbody.dataset.bound) {
     tbody.dataset.bound = '1';
+
     tbody.addEventListener('click', e => {
+       
       const btn = e.target.closest('[data-remove]');
-      if (!btn) return;
-      const symbol = btn.dataset.remove;
-      const next = (cachedSymbols || []).filter(s => s !== symbol);
-      saveWatchlist(next)
-        .then(() => {
-          loadWatchlistPage();
-          loadDashboardWatchlist();
-          loadDashboardCards();
-        })
-        .catch(err => console.error('Could not remove market', err));
+      if (btn) {
+        const symbol = btn.dataset.remove;
+        const next = (cachedSymbols || []).filter(s => s !== symbol);
+        saveWatchlist(next)
+          .then(() => {
+            loadWatchlistPage();
+            loadDashboardWatchlist();
+            loadDashboardCards();
+          })
+          .catch(err => console.error('Could not remove market', err));
+        return;
+      }
+
+       
+      const row = e.target.closest('[data-open-market]');
+      if (row) openMarket(row.dataset.openMarket);
+    });
+
+     
+    tbody.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.target.closest('[data-remove]')) return;  
+      const row = e.target.closest('[data-open-market]');
+      if (!row) return;
+      e.preventDefault();
+      openMarket(row.dataset.openMarket);
     });
   }
 

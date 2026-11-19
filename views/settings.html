@@ -44,19 +44,27 @@
   </section>
 
   <!-- AI chat usage -->
-  <section class="settings-card" aria-labelledby="set-usage">
-    <div class="settings-card__head">
-      <h2 id="set-usage">AI Chat Usage</h2>
-      <span class="settings-muted">Resets daily</span>
-    </div>
-    <div class="usage__row">
-      <strong>7 of 10 messages used today</strong>
-      <span class="settings-muted">3 left</span>
-    </div>
-    <div class="usage__bar" role="progressbar" aria-label="AI chat messages used today" aria-valuemin="0" aria-valuemax="10" aria-valuenow="7">
-      <span style="width:70%"></span>
-    </div>
-  </section>
+<section class="settings-card" aria-labelledby="set-usage">
+  <div class="settings-card__head">
+    <h2 id="set-usage">AI Chat Usage</h2>
+    <span class="settings-muted">Resets daily</span>
+  </div>
+
+  <div class="usage__row">
+    <strong id="settings-ai-usage-count">Loading...</strong>
+    <span class="settings-muted" id="settings-ai-usage-left">—</span>
+  </div>
+
+  <div class="usage__bar"
+       role="progressbar"
+       aria-label="AI chat messages used today"
+       aria-valuemin="0"
+       aria-valuemax="5"
+       aria-valuenow="0"
+       id="settings-ai-usage-progress">
+    <span id="settings-ai-usage-bar" style="width:0%"></span>
+  </div>
+</section>
 
   <!-- Notification preferences -->
   <section class="settings-card" aria-labelledby="set-notify">

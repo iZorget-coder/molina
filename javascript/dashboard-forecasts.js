@@ -1,10 +1,12 @@
 import { fetchLatestPredictions, formatDay, formatDate, weekdayLong } from './predictions.js';
-
+import { renderDashboardAiUsage } from './ai-usage.js';
 
 export async function loadForecastHeader() {
-  const title = document.getElementById('forecast-title');
-  const sub = document.getElementById('forecast-sub');
-  if (!title || !sub) return;
+    renderDashboardAiUsage();
+
+    const title = document.getElementById('forecast-title');
+    const sub = document.getElementById('forecast-sub');
+    if (!title || !sub) return;
 
   try {
     const data = await fetchLatestPredictions();

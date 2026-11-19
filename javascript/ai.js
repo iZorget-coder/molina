@@ -39,6 +39,16 @@ function formatMessage(text) {
 
 // --- Usage Limits ---
 
+function getLocalDate() {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Johannesburg',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+}
+
+// --- Usage Limits ---
 async function getUsage() {
     const user = await whenAuthReady();
     if (!user) return { count: 0, date: '' };
@@ -46,7 +56,7 @@ async function getUsage() {
     const ref = doc(db, 'users', user.uid);
     const snap = await getDoc(ref);
     const data = snap.exists() ? snap.data() : {};
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDate();
 
     if (!data.aiUsage || data.aiUsage.date !== today) {
         // Reset for a new day
