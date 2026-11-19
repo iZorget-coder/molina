@@ -138,7 +138,7 @@ export async function loadWatchlistPage() {
 
 function dashboardItemMarkup(market) {
   return `
-    <li class="watch__item">
+    <li class="watch__item" data-market="${market.symbol}">
       <div class="watch__row">
         <div>
           <div class="watch__name">${market.name}</div>
@@ -197,13 +197,27 @@ function sparkPolyline(market) {
 }
 
 function cardMarkup(market) {
-  const pillLabel = { up: '▲ UP', down: '▼ DOWN', flat: '◆ CONSOLIDATION' }[market.dir] || 'NO FORECAST';
+  const pillLabel = {
+    up: '▲ UP',
+    down: '▼ DOWN',
+    flat: '◆ CONSOLIDATION'
+  }[market.dir] || 'NO FORECAST';
+
   const confidence = market.confidence ?? 0;
-  const confidenceText = market.confidence === null ? '—' : `${market.confidence}%`;
+  const confidenceText = market.confidence === null
+    ? '—'
+    : `${market.confidence}%`;
+
   const sparkDir = market.dir === 'none' ? 'flat' : market.dir;
 
   return `
-    <article class="card">
+    <article
+      class="card"
+      data-market="${market.symbol}"
+      tabindex="0"
+      role="link"
+      aria-label="View ${market.name} market details"
+    >
       <div class="card__id">
         <div class="card__title">${market.name} <span class="ticker">${market.symbol}</span></div>
         <span class="pill pill--${market.dir}">${pillLabel}</span>

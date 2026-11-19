@@ -1,0 +1,71 @@
+.page:has(> .market-head) {
+  /* DOWN / CONSOLIDATION variants of the UP styles in markets.css */
+  .tag--down {
+    color: var(--down);
+    background: var(--down-bg);
+    border-color: var(--down-border);
+  }
+
+  .tag--flat {
+    color: var(--flat);
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+
+  .prediction__icon--down {
+    color: var(--down);
+    background: var(--down-bg);
+    border-color: var(--down-border);
+  }
+
+  .prediction__icon--flat {
+    color: var(--flat);
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+
+  .prediction__icon--none {
+    color: var(--text-muted);
+    background: #1e2842;
+    border-color: #2c3857;
+  }
+
+  .bar__fill--other {
+    background: #3a4668;
+  }
+
+  /* where the entry, stop and target came from */
+  .setup__notes {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .setup__notes li {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 10px;
+    padding: 4px 0;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .setup__notes span {
+    color: var(--text-muted);
+  }
+
+  .setup__notes p {
+    color: var(--text-light);
+    overflow-wrap: anywhere;
+  }
+}
+
+
+[data-market] {
+  cursor: pointer;
+}
+
+[data-market]:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}

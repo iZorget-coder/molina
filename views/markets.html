@@ -7,12 +7,12 @@
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </a>
       <div class="market-head__title">
-        <h1>XAUUSD</h1>
-        <p>Gold spot / US dollar · Daily</p>
+        <h1 id="mk-symbol">XAUUSD</h1>
+        <p id="mk-sub">Gold spot / US dollar · Daily</p>
       </div>
       <div class="market-head__price">
-        <span class="price">2,447.85</span>
-        <span class="delta up">▲ +0.88%</span>
+        <span class="price" id="mk-price">—</span>
+        <span class="delta" id="mk-delta"></span>
       </div>
     </div>
 
@@ -35,7 +35,7 @@
     <!-- LEFT COLUMN -->
     <div class="col">
 
-      <!-- Price chart -->
+      <!-- Price chart (unchanged for now) -->
       <section class="card chart-card">
         <div class="card__head">
           <h2>Price, 100 daily candles</h2>
@@ -92,36 +92,20 @@
       <!-- Prediction -->
       <section class="card prediction">
         <div class="prediction__head">
-          <span class="prediction__icon">▲</span>
+          <span class="prediction__icon prediction__icon--none" id="pred-icon">–</span>
           <div class="prediction__text">
-            <h2>XAUUSD — Predicted UP with 62% confidence</h2>
-            <p class="muted-light">Forecast for Mon 16 Nov 2026 · daily model</p>
+            <h2 id="pred-title">Loading forecast…</h2>
+            <p class="muted-light" id="pred-sub"></p>
           </div>
-          <span class="tag tag--up">▲ UP</span>
+          <span class="tag tag--neutral" id="pred-tag">—</span>
         </div>
 
         <div class="conf-main">
-          <div class="conf-main__row"><span>Confidence</span><strong>62%</strong></div>
-          <div class="bar bar--lg"><div class="bar__fill bar__fill--accent" style="width:62%"></div></div>
+          <div class="conf-main__row"><span>Confidence</span><strong id="pred-conf">—</strong></div>
+          <div class="bar bar--lg"><div class="bar__fill bar__fill--accent" id="pred-conf-bar" style="width:0%"></div></div>
         </div>
 
-        <ul class="probs">
-          <li>
-            <span class="probs__label up">▲ UP</span>
-            <div class="bar"><div class="bar__fill bar__fill--up" style="width:62%"></div></div>
-            <span class="probs__val">62%</span>
-          </li>
-          <li>
-            <span class="probs__label down">▼ DOWN</span>
-            <div class="bar"><div class="bar__fill bar__fill--down" style="width:21%"></div></div>
-            <span class="probs__val">21%</span>
-          </li>
-          <li>
-            <span class="probs__label flat">◆ CONSOLIDATION</span>
-            <div class="bar"><div class="bar__fill bar__fill--flat" style="width:17%"></div></div>
-            <span class="probs__val">17%</span>
-          </li>
-        </ul>
+        <ul class="probs" id="pred-probs"></ul>
       </section>
 
     </div>
@@ -133,35 +117,41 @@
       <section class="card setup">
         <div class="card__head card__head--bordered">
           <h2>Trade setup</h2>
-          <span class="tag tag--up tag--sm">▲ LONG</span>
+          <span class="tag tag--neutral tag--sm" id="setup-tag">—</span>
         </div>
 
         <ul class="levels">
           <li>
             <span class="levels__name"><i class="dot dot--entry"></i>Entry</span>
-            <strong>$2,450</strong>
+            <strong id="setup-entry">—</strong>
           </li>
           <li>
             <span class="levels__name"><i class="dot dot--sl"></i>Stop loss</span>
-            <strong>$2,420</strong>
+            <strong id="setup-stop">—</strong>
           </li>
           <li>
             <span class="levels__name"><i class="dot dot--tp"></i>Take profit</span>
-            <strong>$2,510</strong>
+            <strong id="setup-target">—</strong>
           </li>
         </ul>
 
         <div class="rr">
-          <div class="rr__row"><span>Risk : reward</span><strong>1 : 2</strong></div>
+          <div class="rr__row"><span>Risk : reward</span><strong id="setup-rr">—</strong></div>
           <div class="rr__bar">
-            <span class="rr__risk" style="flex:1"></span>
-            <span class="rr__reward" style="flex:2"></span>
+            <span class="rr__risk" id="setup-rr-risk" style="flex:1"></span>
+            <span class="rr__reward" id="setup-rr-reward" style="flex:2"></span>
           </div>
-          <div class="rr__row rr__row--small"><span>Risk $30</span><span>Reward $60</span></div>
+          <div class="rr__row rr__row--small"><span id="setup-risk">Risk —</span><span id="setup-reward">Reward —</span></div>
         </div>
+
+        <ul class="setup__notes" id="setup-notes" hidden>
+          <li><span>Entry</span><p id="note-entry"></p></li>
+          <li><span>Stop</span><p id="note-stop"></p></li>
+          <li><span>Target</span><p id="note-target"></p></li>
+        </ul>
       </section>
 
-      <!-- SMC signals -->
+      <!-- SMC signals (unchanged for now) -->
       <section class="card smc">
         <h2>SMC signals</h2>
         <p class="muted-light smc__sub">Smart money concepts on the daily chart</p>
@@ -186,60 +176,3 @@
     </aside>
   </div>
 </main>
-
-<script>
-  /* ---- Candlestick generator ---- */
-  (function () {
-    const svg = document.getElementById('candles');
-    if (!svg || svg.dataset.rendered) return;
-    svg.dataset.rendered = '1';
-
-    const NS = 'http://www.w3.org/2000/svg';
-    const TOP = 2520;
-    const N = 100;
-    const SPAN = 880;
-    const STEP = SPAN / N;
-    const BODY = STEP * 0.55;
-
-    let seed = 7;
-    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-
-    const pts = [[0,2424],[25,2438],[40,2442],[50,2435],[65,2438],[75,2448],[90,2446],[99,2450]];
-    const base = i => {
-      for (let k = 0; k < pts.length - 1; k++) {
-        const [x0, y0] = pts[k], [x1, y1] = pts[k + 1];
-        if (i >= x0 && i <= x1) return y0 + (y1 - y0) * (i - x0) / (x1 - x0);
-      }
-      return pts[pts.length - 1][1];
-    };
-
-    let prev = base(0);
-    for (let i = 0; i < N; i++) {
-      const open = prev;
-      const close = base(i) + (rand() - 0.5) * 3;
-      const high = Math.max(open, close) + rand() * 2;
-      const low  = Math.min(open, close) - rand() * 2;
-      prev = close;
-
-      const up = close >= open;
-      const color = up ? '#22c55e' : '#ef4444';
-      const x = i * STEP + STEP / 2;
-
-      const wick = document.createElementNS(NS, 'line');
-      wick.setAttribute('x1', x); wick.setAttribute('x2', x);
-      wick.setAttribute('y1', TOP - high); wick.setAttribute('y2', TOP - low);
-      wick.setAttribute('stroke', color);
-      wick.setAttribute('stroke-width', 1);
-      wick.setAttribute('vector-effect', 'non-scaling-stroke');
-      svg.appendChild(wick);
-
-      const rect = document.createElementNS(NS, 'rect');
-      rect.setAttribute('x', x - BODY / 2);
-      rect.setAttribute('width', BODY);
-      rect.setAttribute('y', TOP - Math.max(open, close));
-      rect.setAttribute('height', Math.max(Math.abs(close - open), 0.5));
-      rect.setAttribute('fill', color);
-      svg.appendChild(rect);
-    }
-  })();
-</script>

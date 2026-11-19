@@ -2420,14 +2420,26 @@ for csv_path, index_name in INDEX_CONFIGS:
         if res is not None:
             results_list.append(res)
 
-            # ← NEW: collect per-market prediction for predictions.json
+            # : collect per-market prediction for predictions.json
             market_key = MARKET_KEY_MAP.get(index_name, index_name)
             predictions[market_key] = {
-                "bias":       res['predicted_state'],       # "UP" | "DOWN" | "CONSOLIDATION"
+                "bias":       res['predicted_state'],
+
+                # Probability of the predicted direction
                 "confidence": float(res['probs'][res['predicted_state']]),
-                "close":      float(res['close']),
-                "date":       str(res['latest_date']),       # data date, not run date
-                "trade":      _trade_for_json(res['trade']), # entry position (or NO TRADE)
+
+                # Probability of every possible market direction
+                    "probabilities": {
+                        "UP": float(res['probs']['UP']),
+                        "DOWN": float(res['probs']['DOWN']),
+                        "CONSOLIDATION": float(res['probs']['CONSOLIDATION']),
+                    },
+                     "close": float(res['close']),
+                     "date": str(res['latest_date']),
+                     "trade": _trade_for_json(res['trade']),
+                
+
+                
             }
     except Exception as e:
         print(f"\n❌ Error processing {index_name}: {e}")

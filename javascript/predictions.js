@@ -65,7 +65,7 @@ export const formatLong = (iso) =>
 export const weekdayLong = (iso) =>
   iso ? utc(iso).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' }) : '';
 
-
+// "18 Nov 2026"
 export const formatDate = (iso) =>
   iso
     ? utc(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
@@ -90,6 +90,26 @@ function previousClose(olderPredictions, symbol, closeDate) {
   return null;
 }
 
+// The "trade" map the pipeline stores next to each prediction (entry, stop, target, risk/reward)
+function normaliseTrade(t) {
+  if (!t || typeof t !== 'object') return null;
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  return {
+    action: t.action ? String(t.action).toUpperCase() : null,    
+    conviction: t.conviction ?? null,                           
+    entry: num(t.entry),
+    stopLoss: num(t.stop_loss),
+    takeProfit: num(t.take_profit),
+    risk: num(t.risk),                                          
+    reward: num(t.reward),                                      
+    riskReward: num(t.risk_reward),
+    entryType: t.entry_type ?? null,
+    stopSource: t.stop_source ?? null,
+    targetSource: t.target_source ?? null,
+  };
+}
+
+
 function normalise(docId, data, olderPredictions) {
   const raw = data.predictions || {};
   const bySymbol = {};
@@ -98,8 +118,26 @@ function normalise(docId, data, olderPredictions) {
     const p = raw[m.symbol];
     const direction = directionOf(p?.bias);
     const hasForecast = Boolean(p) && direction.key !== 'none';
-    // stored as 0–1, shown as a whole percentage
-    const confidence = typeof p?.confidence === 'number' ? Math.round(p.confidence * 100) : null;
+
+    const confidence = typeof p?.confidence === 'number'
+      ? Math.round(p.confidence * 100)
+      : null;
+
+    // Individual probabilities for all three market directions
+    const probabilities = {
+      up: typeof p?.probabilities?.UP === 'number'
+        ? Math.round(p.probabilities.UP * 100)
+        : null,
+
+      down: typeof p?.probabilities?.DOWN === 'number'
+        ? Math.round(p.probabilities.DOWN * 100)
+        : null,
+
+      consolidation: typeof p?.probabilities?.CONSOLIDATION === 'number'
+        ? Math.round(p.probabilities.CONSOLIDATION * 100)
+        : null,
+    };
+
     const close = typeof p?.close === 'number' ? p.close : null;
     const closeDate = p?.date ?? null;
 
@@ -115,34 +153,45 @@ function normalise(docId, data, olderPredictions) {
       hasForecast,
       bias: p?.bias ?? null,
       direction,
-      dir: direction.key,                
-      confidence,                        
+      dir: direction.key,
+      confidence,
+      probabilities,
       close,
       closeDate,
-      change,                            
-      price: formatPrice(close),        
-      changeText: formatChange(change), 
+      trade: normaliseTrade(p?.trade),
+      change,
+      price: formatPrice(close),
+      changeText: formatChange(change),
       label: hasForecast
         ? `${direction.arrow} ${direction.label}${confidence !== null ? ` ${confidence}%` : ''}`
         : 'No forecast',
     };
   }
 
-  const closeDates = Object.values(raw).map((p) => p?.date).filter(Boolean).sort();
-  const closeDate = closeDates.length ? closeDates[closeDates.length - 1] : null;
+  const closeDates = Object.values(raw)
+    .map(p => p?.date)
+    .filter(Boolean)
+    .sort();
+
+  const closeDate = closeDates.length
+    ? closeDates[closeDates.length - 1]
+    : null;
 
   return {
-    forecastDate: docId,                                   
-    forecastDay: closeDate ? nextTradingDay(closeDate) : docId,  
-    closeDate,                                            
-    generatedAt: data.generated_at?.toDate ? data.generated_at.toDate() : null,
-    bySymbol,                                                                  
-    list: MARKETS.map((m) => bySymbol[m.symbol]),                               
+    forecastDate: docId,
+    forecastDay: closeDate ? nextTradingDay(closeDate) : docId,
+    closeDate,
+    generatedAt: data.generated_at?.toDate
+      ? data.generated_at.toDate()
+      : null,
+    bySymbol,
+    list: MARKETS.map(m => bySymbol[m.symbol]),
   };
 }
 
+
 /* ---------- Fetch the newest forecast documents ---------- */
- 
+// Firestore only answers signed-in users, so wait for Firebase to restore the session first.
 const authReady = new Promise((resolve) => {
   const stop = onAuthStateChanged(auth, (user) => {
     stop();
@@ -161,7 +210,7 @@ export function fetchLatestPredictions({ force = false } = {}) {
 
   inflight = (async () => {
     await authReady;
-   
+    
     const q = query(collection(db, 'daily_predictions'), orderBy('generated_at', 'desc'), limit(5));
     const snap = await getDocs(q);
     if (snap.empty) return null;

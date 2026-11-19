@@ -3,6 +3,7 @@ import { bindWatchlistPage, bindDashboardWatchlist, loadDashboardCards } from '.
 import { loadForecastHeader } from './dashboard-forecasts.js';
 import { bindSettings } from './settings.js';
 import { bindNavAvatar } from './profile.js';
+import { initMarketPage, selectMarket } from './markets.js';
 (function () {
   const container = document.getElementById('view-container');
   const cache = {};
@@ -14,7 +15,7 @@ import { bindNavAvatar } from './profile.js';
 
   const hooks = {
     dashboard: initDashboard,
-    markets: renderCandles,
+    markets: () => { renderCandles(); initMarketPage(); },
     watchlist: bindWatchlistPage,
     news: initNews,
     article: renderArticle,
@@ -31,6 +32,14 @@ function initDashboard() {
   function initNews() {
     loadNews();
     bindFilters();
+  }
+
+  // Open the Markets page for one market (from a dashboard card, a sidebar item or a watchlist row)
+  function openMarket(symbol) {
+    selectMarket(symbol);
+    history.pushState({ view: 'markets', symbol }, '', '#markets');
+    currentName = null; // reload the view even if it's already open
+    loadView('markets');
   }
 
   function renderArticle() {
@@ -169,7 +178,12 @@ function initDashboard() {
 
   async function loadView(name) {
     if (!VALID.includes(name)) name = 'dashboard';
-    if (name === currentName) return;
+   if (name === currentName) {
+      if (name === 'markets') {
+        initMarketPage();
+      }
+      return;
+    }
 
     const token = ++requestToken;
 
@@ -206,6 +220,13 @@ function initDashboard() {
   }
 
   document.addEventListener('click', (e) => {
+   
+    const marketEl = e.target.closest('[data-market]');
+    if (marketEl && !e.target.closest('button, a')) {
+      openMarket(marketEl.dataset.market);
+      return;
+    }
+
     const story = e.target.closest('a[data-article]');
     if (story) {
       e.preventDefault();
@@ -234,13 +255,19 @@ function initDashboard() {
     history.pushState({ view: name }, '', `#${name}`);
     loadView(name);
   });
+ 
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const marketEl = e.target.closest?.('[data-market]');
+    if (marketEl && e.target === marketEl) openMarket(marketEl.dataset.market);
+  });
 
   window.addEventListener('popstate', () => {
     const name = location.hash.slice(1) || 'dashboard';
     loadView(name);
   });
 
-  bindNavAvatar();   // show the user's photo/initials on the nav avatar
+  bindNavAvatar(); 
 
   const initial = location.hash.slice(1);
   if (initial && VALID.includes(initial)) {
