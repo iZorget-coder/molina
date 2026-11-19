@@ -2037,8 +2037,8 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
 
     journal_state = {'cals': None, 'meta': None}
 
-    def _find_row_by_date(frame, input_date):
-        input_date = pd.to_datetime(input_date)
+    def _find_row_by_date(frame, LATEST_DATE):
+        input_date = pd.to_datetime(LATEST_DATE)
         matches = frame[frame['Date'] == input_date]
         if len(matches) > 0:
             return matches, False
@@ -2217,9 +2217,9 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
         return trade, info
 
     
-    def predict_for_date(input_date):
+    def predict_for_date(LATEST_DATE):
 
-        input_date = pd.to_datetime(input_date)
+        input_date = pd.to_datetime(LATEST_DATE)
 
         use_live = len(df_live) and (df_live['Date'] == input_date).any()
         source = df_live if use_live else df_model
