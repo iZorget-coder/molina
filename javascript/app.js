@@ -4,7 +4,7 @@ import { loadForecastHeader } from './dashboard-forecasts.js';
 import { bindSettings } from './settings.js';
 import { bindNavAvatar } from './profile.js';
 import { initMarketPage, selectMarket } from './markets.js';
-// In app.js, import at the top:
+ 
 import { initAiPage } from './ai.js';
 
 
@@ -40,7 +40,7 @@ function initDashboard() {
     bindFilters();
   }
 
-  // Open the Markets page for one market (from a dashboard card, a sidebar item or a watchlist row)
+ 
   function openMarket(symbol) {
     selectMarket(symbol);
     history.pushState({ view: 'markets', symbol }, '', '#markets');
@@ -208,7 +208,7 @@ function initDashboard() {
     container.innerHTML = '<p class="view-loading">Loading…</p>';
 
     try {
-      const res = await fetch(`/views/${name}.html`);
+      const res = await fetch(`${import.meta.env.BASE_URL}views/${name}.html`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const html = await res.text();
 
