@@ -4,7 +4,7 @@
     "confidence": 0.4068958352757123,
     "probabilities": {
       "UP": 0.4068958352757123,
-      "DOWN": 0.32757206885897666,
+      "DOWN": 0.3275720688589766,
       "CONSOLIDATION": 0.265532095865311
     },
     "signals": [
@@ -34,7 +34,7 @@
     "probabilities": {
       "UP": 0.4415715090247495,
       "DOWN": 0.32920216523294926,
-      "CONSOLIDATION": 0.2292263257423012
+      "CONSOLIDATION": 0.22922632574230117
     },
     "signals": [
       "Bull Breaker",
@@ -91,8 +91,8 @@
     "confidence": 0.426401781825257,
     "probabilities": {
       "UP": 0.426401781825257,
-      "DOWN": 0.2811750607809046,
-      "CONSOLIDATION": 0.29242315739383845
+      "DOWN": 0.28117506078090465,
+      "CONSOLIDATION": 0.2924231573938384
     },
     "signals": [
       "Bull Breaker",
