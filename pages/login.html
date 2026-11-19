@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles/login.css">
+  <link rel="stylesheet" href="../styles/login.css">
 </head>
 <body>
   <main class="auth-layout">
@@ -142,9 +142,11 @@
     ensureUserProfile
   } from '../javascript/profile.js';
 
+  const APP_URL = import.meta.env.BASE_URL + 'pages/app.html';
+
   // Redirect if already signed in (but not while a Google sign-in is still saving the profile)
   onAuthStateChanged(auth, (user) => {
-    if (user && !isAuthFlowActive()) window.location.replace('/pages/app.html');
+    if (user && !isAuthFlowActive()) window.location.replace(APP_URL);
   });
 
   const form = document.querySelector('.login-form');
@@ -173,7 +175,7 @@
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      window.location.replace('/pages/app.html');
+      window.location.replace(APP_URL);
     } catch (error) {
       switch (error.code) {
         case 'auth/invalid-credential':
@@ -209,7 +211,7 @@
       } catch (err) {
         console.error('Could not save profile', err);
       }
-      window.location.replace('/pages/app.html');
+      window.location.replace(APP_URL);
     } catch (error) {
       endAuthFlow();
       googleBtn.disabled = false;

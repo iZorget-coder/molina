@@ -3,7 +3,7 @@
   if (!container) return;
 
 
-  const BASE = location.pathname.replace(/pages\/[^/]*$/, '');
+ const BASE = import.meta.env.BASE_URL;
 
   // Desktop top-bar links
   const links = [
