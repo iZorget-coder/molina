@@ -1,3 +1,6 @@
+body{
+   font-family: "Space Mono", monospace;
+}
 .page:has(> .settings-head) {
   h1,
   h2,
@@ -12,7 +15,7 @@
   }
 
   button {
-    font-family: inherit;
+   font-family: "Space Mono", monospace;
   }
 
   /* ---------- Page ---------- */

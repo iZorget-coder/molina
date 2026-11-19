@@ -20,7 +20,7 @@
   }
 
   button {
-    font-family: inherit;
+   font-family: "Space Mono", monospace;
   }
 
   .up    { color: var(--up); }

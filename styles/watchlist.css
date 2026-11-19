@@ -44,7 +44,7 @@ body {
 
 body {
   min-height: 100vh;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Space Mono", monospace;
   font-size: 14px;
   line-height: 1.4;
   background: var(--bg);
@@ -64,7 +64,7 @@ a {
 
 button,
 input {
-  font-family: inherit;
+ font-family: "Space Mono", monospace;
 }
 
 [hidden] {
@@ -817,7 +817,7 @@ body:has(.add-modal[open]) {
   border-radius: 8px;
   background: transparent;
   color: var(--text-light);
-  font-family: inherit;
+  font-family: "Space Mono", monospace;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;

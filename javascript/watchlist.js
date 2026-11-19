@@ -55,9 +55,9 @@ async function saveWatchlist(symbols) {
 
 /* ---------- Live forecasts (Firestore: daily_predictions) ---------- */
 
-let live = null; // latest forecast snapshot, or null when none has been written yet
+let live = null;  
 
-// Throws if Firestore refuses the read, so each view can show its own error state.
+ 
 async function loadLive() {
   live = await fetchLatestPredictions();
   return live;
@@ -127,7 +127,7 @@ export async function loadWatchlistPage() {
     }
 
     const countEl = document.getElementById('watchlist-count');
-    if (countEl) countEl.textContent = `${symbols.length} ${symbols.length === 1 ? 'market' : 'markets'}`;
+    if (countEl) countEl.textContent = `${markets.length} ${markets.length === 1 ? 'market' : 'markets'}`;
   } catch (err) {
     console.error(err);
     tbody.innerHTML = '<tr><td colspan="5" class="view-error">Could not load watchlist.</td></tr>';
@@ -167,7 +167,7 @@ export async function loadDashboardWatchlist() {
       : '<li class="watch__item"><p class="view-empty">No markets yet.</p></li>';
 
     const countEl = document.querySelector('.sidebar__head .muted');
-    if (countEl) countEl.textContent = `${symbols.length} ${symbols.length === 1 ? 'market' : 'markets'}`;
+    if (countEl) countEl.textContent = `${markets.length} ${markets.length === 1 ? 'market' : 'markets'}`;
   } catch (err) {
     console.error(err);
     list.innerHTML = '<li class="watch__item"><p class="view-error">Could not load watchlist.</p></li>';
@@ -176,7 +176,7 @@ export async function loadDashboardWatchlist() {
 
 /* ---------- Dashboard forecast cards ---------- */
 
-// Decorative only: the line is generated from the forecast direction, not real price history
+
 function sparkPolyline(market) {
   const seedBase = market.symbol.split('').reduce((a, c) => a + c.charCodeAt(0), 7);
   let seed = seedBase;
@@ -256,7 +256,7 @@ function renderModalRows(dialog, currentSymbols) {
     input.disabled = currentSymbols.includes(symbol);
     input.checked = false;
 
-    // show the live price and forecast instead of the placeholder text in the markup
+ 
     const market = getMarket(symbol);
     const priceEl = row.querySelector('.add-modal__price');
     const tagEl = row.querySelector('.add-modal__tag');
@@ -268,7 +268,9 @@ function renderModalRows(dialog, currentSymbols) {
   });
 
   const empty = dialog.querySelector('.add-modal__empty');
-  if (empty) empty.hidden = currentSymbols.length < MARKETS.length;
+  const allAdded = rows.length > 0 &&
+    Array.from(rows).every(row => currentSymbols.includes(row.dataset.symbol));
+  if (empty) empty.hidden = !allAdded;
 
   const countEl = dialog.querySelector('[data-count]');
   if (countEl) countEl.textContent = '0';
@@ -289,7 +291,7 @@ export async function openAddMarketModal() {
   const dialog = document.getElementById('add-market-modal');
   if (!dialog) return;
 
-  // the modal still works if the forecasts can't be read; the rows just keep their placeholder text
+ 
   const [currentSymbols] = await Promise.all([
     fetchWatchlist(),
     loadLive().catch(err => console.error('Could not load forecasts for the modal', err)),
@@ -318,7 +320,7 @@ export async function openAddMarketModal() {
 
         if (!selected.length) return;
 
-        // read the current list at click time, so a market added earlier isn't lost
+     
         const merged = Array.from(new Set([...(cachedSymbols || []), ...selected]));
         saveWatchlist(merged)
           .then(() => {
