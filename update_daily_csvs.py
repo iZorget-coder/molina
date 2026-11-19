@@ -1,7 +1,13 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
 import yfinance as yf
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Map daily CSV -> (Yahoo ticker, hourly CSV)
 TICKER_MAP = {
@@ -11,104 +17,134 @@ TICKER_MAP = {
     "XAUUSD_1d_data.csv": ("GC=F",  "XAUUSD_H1.csv"),
 }
 
-def get_latest_yahoo_daily(ticker):
-    """Fetch the last 5 days from Yahoo, return the most recent complete bar or None."""
+
+def today_utc():
+    """Today's date in UTC (GitHub Actions runs in UTC). Any bar dated today or later is still in progress."""
+    return datetime.now(timezone.utc).date()
+
+
+def get_yahoo_daily_bars(ticker, after_date, today):
+    """Completed daily bars from Yahoo with after_date < Date < today, oldest first."""
     try:
-        # Fetch a small window to capture the latest bar
-        df = yf.download(ticker, period="5d", interval="1d", progress=False, auto_adjust=False)
+        # A small window is enough to catch up after a weekend, a holiday or a missed run
+        df = yf.download(ticker, period="10d", interval="1d", progress=False, auto_adjust=False)
         if df.empty:
-            return None
-        
-        # yfinance may return a MultiIndex column if ticker is a list; flatten if needed
+            return []
+
+        # yfinance may return a MultiIndex column; flatten if needed
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-            
-        latest = df.iloc[-1]
-        
-        # Reject if OHLC are NaN (Yahoo's "corrupt row" case)
-        if pd.isna(latest["Open"]) or pd.isna(latest["High"]) or pd.isna(latest["Low"]) or pd.isna(latest["Close"]):
-            print(f"  Yahoo returned a NaN/incomplete bar for {latest.name.date()}")
-            return None
-            
-        return {
-            "Date":   str(latest.name.date()),
-            "Open":   float(latest["Open"]),
-            "High":   float(latest["High"]),
-            "Low":    float(latest["Low"]),
-            "Close":  float(latest["Close"]),
-            "Volume": float(latest["Volume"]) if not pd.isna(latest["Volume"]) else 0,
-        }
+
+        bars = []
+        for ts, row in df.iterrows():
+            bar_date = ts.date()
+
+            if bar_date >= today:
+                continue  # today's bar is still forming
+            if bar_date <= after_date:
+                continue  # already in the CSV
+
+            # Reject Yahoo's "corrupt row" case (NaN OHLC)
+            if any(pd.isna(row[c]) for c in ("Open", "High", "Low", "Close")):
+                print(f"  Yahoo returned a NaN/incomplete bar for {bar_date}")
+                continue
+
+            bars.append({
+                "Date":   str(bar_date),
+                "Open":   float(row["Open"]),
+                "High":   float(row["High"]),
+                "Low":    float(row["Low"]),
+                "Close":  float(row["Close"]),
+                "Volume": float(row["Volume"]) if not pd.isna(row["Volume"]) else 0,
+            })
+        return bars
     except Exception as e:
         print(f"  Yahoo fetch failed: {e}")
-        return None
+        return []
 
-def aggregate_latest_hourly(hourly_path):
-    """Aggregate the most recent complete UTC date from the hourly CSV."""
+
+def aggregate_hourly_bars(hourly_path, after_date, today):
+    """Daily bars built from the hourly CSV for after_date < UTC date < today, oldest first."""
     if not os.path.exists(hourly_path):
-        return None
+        return []
     try:
         hourly = pd.read_csv(hourly_path)
         if hourly.empty:
-            return None
-        
+            return []
+
         hourly["timestamp"] = pd.to_datetime(hourly["timestamp"], utc=True)
         hourly["date"] = hourly["timestamp"].dt.date
-        latest_date = hourly["date"].max()
-        day = hourly[hourly["date"] == latest_date].sort_values("timestamp")
-        
-        if day.empty:
-            return None
-            
-        return {
-            "Date":   str(latest_date),
-            "Open":   float(day["open"].iloc[0]),
-            "High":   float(day["high"].max()),
-            "Low":    float(day["low"].min()),
-            "Close":  float(day["close"].iloc[-1]),
-            "Volume": float(day["volume"].sum()) if "volume" in day and day["volume"].notna().any() else 0,
-        }
+        hourly = hourly[(hourly["date"] > after_date) & (hourly["date"] < today)]
+        if hourly.empty:
+            return []
+
+        bars = []
+        for bar_date, day in hourly.sort_values("timestamp").groupby("date"):
+            has_volume = "volume" in day and day["volume"].notna().any()
+            bars.append({
+                "Date":   str(bar_date),
+                "Open":   float(day["open"].iloc[0]),
+                "High":   float(day["high"].max()),
+                "Low":    float(day["low"].min()),
+                "Close":  float(day["close"].iloc[-1]),
+                "Volume": float(day["volume"].sum()) if has_volume else 0,
+            })
+        return bars
     except Exception as e:
         print(f"  Hourly aggregation failed: {e}")
-        return None
+        return []
+
 
 def update_daily_csv(daily_path, yahoo_ticker, hourly_path):
     if not os.path.exists(daily_path):
         print(f"Skipping {daily_path} (file not found)")
         return
 
+    today = today_utc()
     daily = pd.read_csv(daily_path)
-    last_daily_date = str(pd.to_datetime(daily["Date"].iloc[-1]).date())
-    
-    print(f"{daily_path}: last date = {last_daily_date}")
+    changed = False
+
+    # 0. Drop any row dated today or later (an unfinished candle added by an earlier run)
+    row_dates = pd.to_datetime(daily["Date"]).dt.date
+    keep = row_dates < today
+    if not keep.all():
+        dropped = ", ".join(str(d) for d in row_dates[~keep])
+        print(f"  Removing in-progress row(s): {dropped}")
+        daily = daily[keep].reset_index(drop=True)
+        changed = True
+
+    last_daily_date = pd.to_datetime(daily["Date"].iloc[-1]).date()
+    print(f"{daily_path}: last date = {last_daily_date} (today UTC = {today}, newest allowed = {today - pd.Timedelta(days=1)})")
 
     # 1. Try Yahoo first
-    latest = get_latest_yahoo_daily(yahoo_ticker)
+    bars = get_yahoo_daily_bars(yahoo_ticker, last_daily_date, today)
     source = "Yahoo"
 
-    # 2. Fallback to hourly aggregation if Yahoo failed or returned an old date
-    if latest is None or latest["Date"] <= last_daily_date:
-        print(f"  Yahoo didn't have a new complete bar. Trying hourly fallback...")
-        latest = aggregate_latest_hourly(hourly_path)
+    # 2. Fall back to hourly aggregation if Yahoo had no new completed bar
+    if not bars:
+        print("  Yahoo didn't have a new complete bar. Trying hourly fallback...")
+        bars = aggregate_hourly_bars(hourly_path, last_daily_date, today)
         source = "Hourly"
 
-    if latest is None:
-        print(f"  No new data available from either source.")
-        return
+    # 3. Append every completed day we're missing (never today)
+    if bars:
+        rows = []
+        for latest in bars:
+            row = {col: latest.get(col, None) for col in daily.columns}
+            if "Adj Close" in daily.columns:
+                row["Adj Close"] = row["Close"]
+            rows.append(row)
+            print(f"  ✅ Appended {latest['Date']} from {source} → Close: {row['Close']:.2f}")
+        daily = pd.concat([daily, pd.DataFrame(rows)], ignore_index=True)
+        changed = True
+    else:
+        print(f"  No new completed days to add. CSV is up to date through {last_daily_date}.")
 
-    # 3. Final check: only append if it's actually a new date
-    if latest["Date"] <= last_daily_date:
-        print(f"  Latest available date ({latest['Date']}) is not newer than CSV ({last_daily_date}). Skipping.")
-        return
+    if changed:
+        daily.to_csv(daily_path, index=False)
 
-    # 4. Append
-    row = {col: latest.get(col, None) for col in daily.columns}
-    if "Adj Close" in daily.columns:
-        row["Adj Close"] = row["Close"]
-
-    daily = pd.concat([daily, pd.DataFrame([row])], ignore_index=True)
-    daily.to_csv(daily_path, index=False)
-    print(f"  ✅ Appended {latest['Date']} from {source} → Close: {row['Close']:.2f}")
 
 if __name__ == "__main__":
     for daily_file, (yahoo_ticker, hourly_file) in TICKER_MAP.items():
         update_daily_csv(daily_file, yahoo_ticker, hourly_file)
+
