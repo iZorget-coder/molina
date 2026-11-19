@@ -11,6 +11,20 @@ const DESCRIPTIONS = {
   DXY: 'US Dollar Index',
 };
 
+const SIGNAL_META = {
+  'BOS Bull':       { tone: 'up',      arrow: '▲', description: 'Bullish break of structure' },
+  'BOS Bear':       { tone: 'down',    arrow: '▼', description: 'Bearish break of structure' },
+  'Bull FVG':       { tone: 'up',      arrow: '▲', description: 'Bullish fair value gap' },
+  'Bear FVG':       { tone: 'down',    arrow: '▼', description: 'Bearish fair value gap' },
+  'Bull IFVG':      { tone: 'up',      arrow: '▲', description: 'Bullish inverse fair value gap' },
+  'Bear IFVG':      { tone: 'down',    arrow: '▼', description: 'Bearish inverse fair value gap' },
+  'Bull Breaker':   { tone: 'up',      arrow: '▲', description: 'Bullish breaker block' },
+  'Bear Breaker':   { tone: 'down',    arrow: '▼', description: 'Bearish breaker block' },
+  'Bull OB':        { tone: 'up',      arrow: '▲', description: 'Bullish order block' },
+  'Bear OB':        { tone: 'down',    arrow: '▼', description: 'Bearish order block' },
+  'Liquidity Sweep':{ tone: 'neutral', arrow: '◆', description: 'Liquidity taken at recent extreme' },
+};
+
 // Only gold is priced in dollars; the indices are plain points
 const LEVEL_PREFIX = { XAUUSD: '$' };
 
@@ -216,6 +230,53 @@ function paintTrade(symbol, m) {
   }
 }
 
+function paintSmc(symbol, m) {
+  const grid = $('smc-grid');
+  const wide = $('smc-wide');
+  if (!grid || !wide) return;
+
+  const signals = Array.isArray(m?.signals) ? m.signals : [];
+
+  if (!signals.length) {
+    grid.innerHTML = '<p class="muted-light">No active SMC signals for this market.</p>';
+    wide.innerHTML = '';
+    return;
+  }
+
+ 
+  const gridItems = [];
+  const wideItems = [];
+
+  signals.forEach(raw => {
+    const meta = SIGNAL_META[raw] || { tone: 'neutral', arrow: '◆', description: raw };
+    const item = {
+      label: raw,
+      tone: meta.tone,
+      arrow: meta.arrow,
+      description: meta.description,
+    };
+    if (raw.includes('Liquidity') || raw.includes('Sweep')) {
+      wideItems.push(item);
+    } else {
+      gridItems.push(item);
+    }
+  });
+
+  grid.innerHTML = gridItems.map(item => `
+    <div class="signal">
+      <span class="tag tag--${item.tone} tag--sm">${item.arrow} ${item.label}</span>
+      <p>${item.description}</p>
+    </div>
+  `).join('');
+
+  wide.innerHTML = wideItems.map(item => `
+    <div class="signal signal--wide">
+      <span class="tag tag--${item.tone} tag--sm">${item.arrow} ${item.label}</span>
+      <p>${item.description}</p>
+    </div>
+  `).join('');
+}
+
 /* ---------- Page entry point ---------- */
 
 export async function initMarketPage() {
@@ -233,6 +294,7 @@ export async function initMarketPage() {
     paintHeader(symbol, m);
     paintPrediction(symbol, m, live);
     paintTrade(symbol, m);
+    paintSmc(symbol, m);
   } catch (err) {
     console.error('Could not load the market', err);
     if (!$('pred-title')) return;

@@ -148,24 +148,25 @@ function normalise(docId, data, olderPredictions) {
     }
 
     bySymbol[m.symbol] = {
-      ...m,
-      sub: `${m.symbol} · ${m.type}`,
-      hasForecast,
-      bias: p?.bias ?? null,
-      direction,
-      dir: direction.key,
-      confidence,
-      probabilities,
-      close,
-      closeDate,
-      trade: normaliseTrade(p?.trade),
-      change,
-      price: formatPrice(close),
-      changeText: formatChange(change),
-      label: hasForecast
-        ? `${direction.arrow} ${direction.label}${confidence !== null ? ` ${confidence}%` : ''}`
-        : 'No forecast',
-    };
+  ...m,
+  sub: `${m.symbol} · ${m.type}`,
+  hasForecast,
+  bias: p?.bias ?? null,
+  direction,
+  dir: direction.key,
+  confidence,
+  probabilities,
+  close,
+  closeDate,
+  trade: normaliseTrade(p?.trade),
+  signals: Array.isArray(p?.signals) ? p.signals : [], 
+  change,
+  price: formatPrice(close),
+  changeText: formatChange(change),
+  label: hasForecast
+    ? `${direction.arrow} ${direction.label}${confidence !== null ? ` ${confidence}%` : ''}`
+    : 'No forecast',
+};
   }
 
   const closeDates = Object.values(raw)
