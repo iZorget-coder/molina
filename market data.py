@@ -2367,7 +2367,7 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
             signals
         )
 
-print(f"\n🔔 Active SMC signals: {', '.join(signals) if signals else 'None'}")
+        print(f"\n🔔 Active SMC signals: {', '.join(signals) if signals else 'None'}")
         print("\n" + "="*60)
         print(f"🔮 {index_name} PREDICTION")
         print("="*60)
