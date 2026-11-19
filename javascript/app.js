@@ -4,6 +4,11 @@ import { loadForecastHeader } from './dashboard-forecasts.js';
 import { bindSettings } from './settings.js';
 import { bindNavAvatar } from './profile.js';
 import { initMarketPage, selectMarket } from './markets.js';
+// In app.js, import at the top:
+import { initAiPage } from './ai.js';
+
+
+
 (function () {
   const container = document.getElementById('view-container');
   const cache = {};
@@ -20,6 +25,7 @@ import { initMarketPage, selectMarket } from './markets.js';
     news: initNews,
     article: renderArticle,
     settings: bindSettings,
+    ai: initAiPage,
   };
 
 function initDashboard() {

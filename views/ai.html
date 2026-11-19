@@ -1,45 +1,22 @@
 <main class="page">
   <div class="ai-layout">
 
-    <!-- LEFT: chat history -->
+    <!-- LEFT: Chat history -->
     <aside class="ai-side" aria-label="Chat history">
-      <button type="button" class="ai-new">
+      <button type="button" class="ai-new" id="ai-new-chat">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New chat
       </button>
 
       <h2 class="ai-side__label">Recent</h2>
-      <ul class="ai-recent">
-        <li>
-          <button type="button" class="ai-recent__item is-active" aria-current="true">
-            <span class="ai-recent__title">Why is XAUUSD forecast UP?</span>
-            <span class="ai-recent__date">Today</span>
-          </button>
-        </li>
-        <li>
-          <button type="button" class="ai-recent__item">
-            <span class="ai-recent__title">NASDAQ vs S&amp;P 500 divergence</span>
-            <span class="ai-recent__date">Yesterday</span>
-          </button>
-        </li>
-        <li>
-          <button type="button" class="ai-recent__item">
-            <span class="ai-recent__title">What does CONSOLIDATION mean?</span>
-            <span class="ai-recent__date">Fri 13 Nov</span>
-          </button>
-        </li>
-        <li>
-          <button type="button" class="ai-recent__item">
-            <span class="ai-recent__title">How does DXY affect gold?</span>
-            <span class="ai-recent__date">Thu 12 Nov</span>
-          </button>
-        </li>
+      <ul class="ai-recent" id="ai-recent-list">
+        <!-- Populated by JS -->
       </ul>
 
       <div class="ai-usage">
-        <div class="ai-usage__row"><strong>Daily usage</strong><span>3 left</span></div>
-        <div class="ai-usage__bar" role="progressbar" aria-label="Messages used today" aria-valuemin="0" aria-valuemax="10" aria-valuenow="7"><span style="width:70%"></span></div>
-        <p>7 of 10 messages used today</p>
+        <div class="ai-usage__row"><strong>Daily usage</strong><span id="ai-usage-count">0 / 5</span></div>
+        <div class="ai-usage__bar" role="progressbar" aria-label="Messages used today" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"><span id="ai-usage-bar" style="width:0%"></span></div>
+        <p id="ai-usage-text">5 messages left today</p>
       </div>
     </aside>
 
@@ -47,85 +24,29 @@
     <section class="ai-chat" aria-label="Conversation">
       <header class="ai-chat__head">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
-        <h1>Why is XAUUSD forecast UP?</h1>
-        <span class="ai-chat__ctx">Context: XAUUSD</span>
+        <h1 id="ai-chat-title">Molina AI</h1>
+        <span class="ai-chat__ctx" id="ai-chat-ctx">Context: —</span>
       </header>
 
-      <div class="ai-chat__scroll" role="log" aria-live="polite">
-        <div class="ai-chat__inner">
-
-          <div class="ai-msg ai-msg--user">
-            <p>Why is gold forecast UP for Monday?</p>
-          </div>
-
-          <div class="ai-msg ai-msg--ai">
-            <span class="ai-msg__avatar" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
-            </span>
-            <div class="ai-msg__body">
-              <p>Three things drive the UP lean for XAUUSD on Monday:</p>
-
-              <ol class="ai-steps">
-                <li><span class="ai-steps__num">1</span><p><strong>Structure.</strong> The daily chart shows a bullish break of structure and a bullish fair value gap.</p></li>
-                <li><span class="ai-steps__num">2</span><p><strong>Dollar.</strong> The DXY forecast is DOWN (55%), and a softer dollar usually supports gold.</p></li>
-                <li><span class="ai-steps__num">3</span><p><strong>History.</strong> Of the 29 closest past setups, 18 closed higher the next session (62%).</p></li>
-              </ol>
-
-              <div class="ai-fc">
-                <div class="ai-fc__name">
-                  <strong>XAUUSD</strong>
-                  <span class="ai-tag ai-tag--up">▲ UP</span>
-                </div>
-                <div class="ai-fc__conf">
-                  <div class="ai-fc__row"><span>Confidence</span><strong>62%</strong></div>
-                  <div class="ai-fc__bar" role="progressbar" aria-label="Confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62"><span style="width:62%"></span></div>
-                  <div class="ai-fc__probs">
-                    <span class="ai-down">▼ DOWN 21%</span>
-                    <span class="ai-flat">◆ CONSOLIDATION 17%</span>
-                  </div>
-                </div>
-                <a href="#markets" class="ai-fc__btn">View detail</a>
-              </div>
-
-              <p>That still leaves a 21% chance of DOWN and 17% of CONSOLIDATION, so this is a lean, not a certainty.</p>
-
-              <ul class="ai-sources" aria-label="Sources used">
-                <li>Daily model</li>
-                <li>Historical analogs</li>
-                <li>DXY context</li>
-                <li>News</li>
-              </ul>
-            </div>
-          </div>
-
-          <div class="ai-msg ai-msg--user">
-            <p>What would change the call?</p>
-          </div>
-
-          <div class="ai-msg ai-msg--ai">
-            <span class="ai-msg__avatar" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
-            </span>
-            <div class="ai-msg__body">
-              <p>A daily close below <strong>$2,420</strong>, the stop-loss level in the trade setup, would break the bullish structure. A hotter-than-expected inflation print could also lift the dollar and weigh on gold.</p>
-            </div>
-          </div>
-
+      <div class="ai-chat__scroll" role="log" aria-live="polite" id="ai-chat-scroll">
+        <div class="ai-chat__inner" id="ai-messages">
+          <!-- Messages injected here -->
         </div>
       </div>
 
       <footer class="ai-chat__foot">
         <div class="ai-chat__foot-inner">
-          <ul class="ai-suggest" aria-label="Suggested questions">
-            <li><button type="button">Show similar past setups</button></li>
-            <li><button type="button">Explain the SMC signals</button></li>
-            <li><button type="button">Summarize today's news</button></li>
-          </ul>
+          <div class="ai-model-selector">
+            <label for="ai-model">Model:</label>
+            <select id="ai-model" class="ai-model-select">
+              <option value="openrouter/free">Auto (Free Router)</option>
+            </select>
+          </div>
 
           <div class="ai-composer">
-            <input class="ai-composer__input" type="text" placeholder="Ask about XAUUSD" aria-label="Ask about XAUUSD">
-            <span class="ai-composer__left">3 left today</span>
-            <button type="button" class="ai-send" aria-label="Send message">
+            <input class="ai-composer__input" type="text" placeholder="Ask about your watchlist…" aria-label="Ask about your watchlist" id="ai-input">
+            <span class="ai-composer__left" id="ai-input-hint">5 left today</span>
+            <button type="button" class="ai-send" aria-label="Send message" id="ai-send">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
             </button>
           </div>
@@ -138,42 +59,11 @@
     <!-- RIGHT: chat context -->
     <aside class="ai-ctx" aria-label="Chat context">
       <h2>Chat context</h2>
-
-      <section class="ai-ctx__card">
-        <div class="ai-ctx__market">
-          <div>
-            <strong>XAUUSD</strong>
-            <p>Gold / US dollar</p>
-          </div>
-          <div class="ai-ctx__quote">
-            <strong>2,447.85</strong>
-            <p class="up">▲ +0.88%</p>
-          </div>
-        </div>
-
-        <ul class="ai-ctx__rows">
-          <li><span>Forecast</span><span class="ai-tag ai-tag--up ai-tag--sm">▲ UP 62%</span></li>
-          <li><span>Entry</span><strong>$2,450</strong></li>
-          <li><span>Stop loss</span><strong>$2,420</strong></li>
-          <li><span>Take profit</span><strong>$2,510</strong></li>
-        </ul>
+      <section class="ai-ctx__card" id="ai-ctx-card">
+         <!-- Populated by JS based on market -->
       </section>
-
-      <section class="ai-ctx__card">
-        <h3>Used in answers</h3>
-        <ul class="ai-ctx__used">
-          <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Daily forecast model</li>
-          <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Historical analogs</li>
-          <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>DXY context (on)</li>
-          <li><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>News context</li>
-        </ul>
-      </section>
-
       <a href="#settings" class="ai-ctx__link">Change DXY preference in Settings</a>
     </aside>
 
   </div>
 </main>
-
-
-<textarea hidden></body></textarea>
