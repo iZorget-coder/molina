@@ -1,6 +1,6 @@
 import { loadNews, bindFilters, loadDashboardNews } from './news.js';
 import { bindWatchlistPage, bindDashboardWatchlist, loadDashboardCards } from './watchlist.js';
-
+import { loadForecastHeader } from './dashboard-forecasts.js';
 (function () {
   const container = document.getElementById('view-container');
   const cache = {};
@@ -18,11 +18,12 @@ import { bindWatchlistPage, bindDashboardWatchlist, loadDashboardCards } from '.
     article: renderArticle,
   };
 
-  function initDashboard() {
-    loadDashboardNews();
-    bindDashboardWatchlist();
-    loadDashboardCards();
-  }
+function initDashboard() {
+  loadForecastHeader();
+  loadDashboardNews();
+  bindDashboardWatchlist();
+  loadDashboardCards();
+}
 
   function initNews() {
     loadNews();

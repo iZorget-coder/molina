@@ -1,4 +1,3 @@
-
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { auth, onAuthStateChanged, db } from './firebase.js';
 
@@ -66,8 +65,22 @@ export const formatLong = (iso) =>
 export const weekdayLong = (iso) =>
   iso ? utc(iso).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' }) : '';
 
-/* ---------- Shape the Firestore documents for the UI ---------- */
 
+export const formatDate = (iso) =>
+  iso
+    ? utc(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+    : '';
+
+
+export function nextTradingDay(iso) {
+  const dt = utc(iso);
+  do {
+    dt.setUTCDate(dt.getUTCDate() + 1);
+  } while (dt.getUTCDay() === 0 || dt.getUTCDay() === 6);
+  return dt.toISOString().slice(0, 10);
+}
+
+/* ---------- Shape the Firestore documents for the UI ---------- */
 
 function previousClose(olderPredictions, symbol, closeDate) {
   for (const preds of olderPredictions) {
@@ -102,12 +115,12 @@ function normalise(docId, data, olderPredictions) {
       hasForecast,
       bias: p?.bias ?? null,
       direction,
-      dir: direction.key,               
-      confidence,                      
+      dir: direction.key,                
+      confidence,                        
       close,
       closeDate,
       change,                            
-      price: formatPrice(close),       
+      price: formatPrice(close),        
       changeText: formatChange(change), 
       label: hasForecast
         ? `${direction.arrow} ${direction.label}${confidence !== null ? ` ${confidence}%` : ''}`
@@ -116,12 +129,14 @@ function normalise(docId, data, olderPredictions) {
   }
 
   const closeDates = Object.values(raw).map((p) => p?.date).filter(Boolean).sort();
+  const closeDate = closeDates.length ? closeDates[closeDates.length - 1] : null;
 
   return {
-    forecastDate: docId,                                                        
-    closeDate: closeDates.length ? closeDates[closeDates.length - 1] : null,    
+    forecastDate: docId,                                   
+    forecastDay: closeDate ? nextTradingDay(closeDate) : docId,  
+    closeDate,                                            
     generatedAt: data.generated_at?.toDate ? data.generated_at.toDate() : null,
-    bySymbol,                                                                   
+    bySymbol,                                                                  
     list: MARKETS.map((m) => bySymbol[m.symbol]),                               
   };
 }
@@ -146,7 +161,7 @@ export function fetchLatestPredictions({ force = false } = {}) {
 
   inflight = (async () => {
     await authReady;
-     
+   
     const q = query(collection(db, 'daily_predictions'), orderBy('generated_at', 'desc'), limit(5));
     const snap = await getDocs(q);
     if (snap.empty) return null;
