@@ -2408,7 +2408,9 @@ def run_single_index(csv_path: str, index_name: str, dxy_df=None):
                 print(f"📓 Win prob: {adapt_info['meta_p']:.1%} (exp {adapt_info['meta_exp_r']:+.2f}R)"
                       f"{'  → FILTERED' if adapt_info['filtered'] else ''}")
         print("="*60)
-        return predicted_state, probs, row, trade, baseline, adapt_info, signals = predict_for_date(LATEST_DATE)
+        predicted_state, probs, row, trade, baseline, adapt_info, signals = predict_for_date(LATEST_DATE)
+        return predicted_state, probs, row, trade, baseline, adapt_info, signals
+
 
     # ---------------- RUN ----------------
     LATEST_DATE = df['Date'].max().date()
