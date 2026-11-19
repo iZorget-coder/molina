@@ -25,7 +25,6 @@ const SIGNAL_META = {
   'Liquidity Sweep':{ tone: 'neutral', arrow: '◆', description: 'Liquidity taken at recent extreme' },
 };
 
-// Only gold is priced in dollars; the indices are plain points
 const LEVEL_PREFIX = { XAUUSD: '$' };
 
 const isSymbol = (s) => MARKETS.some((m) => m.symbol === s);
@@ -36,7 +35,6 @@ export function selectMarket(symbol) {
   if (isSymbol(symbol)) sessionStorage.setItem(STORAGE_KEY, symbol);
 }
 
-// Back/forward restore the market through history.state; otherwise use the last one opened
 export function selectedSymbol() {
   const fromState = history.state?.symbol;
   if (isSymbol(fromState)) return fromState;
@@ -60,7 +58,20 @@ const level = (symbol, n) => (n === null ? '—' : `${LEVEL_PREFIX[symbol] || ''
 const distance = (symbol, n) =>
   n === null ? '—' : LEVEL_PREFIX[symbol] ? `${LEVEL_PREFIX[symbol]}${fmt(n)}` : `${fmt(n)} pts`;
 
-/* ---------- Header: symbol, price, day change ---------- */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatCandleLabel(c, timeframe) {
+  if (timeframe === '1H') {
+    const d = new Date(c.time);
+    if (isNaN(d.getTime())) return c.time || '';
+    return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:00`;
+  }
+  if (!c.date) return '';
+  const [, mo, day] = c.date.split('-').map(Number);
+  return `${MONTHS[(mo || 1) - 1]} ${day}`;
+}
+
+/* ---------- Header ---------- */
 
 function paintHeader(symbol, m) {
   setText('mk-symbol', symbol);
@@ -84,7 +95,6 @@ function paintHeader(symbol, m) {
 
 const TAG_CLASS = { up: 'tag--up', down: 'tag--down', flat: 'tag--flat', none: 'tag--neutral' };
 const ICON = { up: '▲', down: '▼', flat: '◆', none: '–' };
-
 
 function paintPrediction(symbol, m, live) {
   const dir = m?.dir ?? 'none';
@@ -125,7 +135,6 @@ function paintPrediction(symbol, m, live) {
   const bar = $('pred-conf-bar');
   if (bar) bar.style.width = `${confidence ?? 0}%`;
 
-  // Display all three model probabilities
   const probs = $('pred-probs');
 
   if (probs) {
@@ -133,27 +142,9 @@ function paintPrediction(symbol, m, live) {
 
     if (has && probabilities) {
       const outcomes = [
-        {
-          key: 'up',
-          label: 'UP',
-          arrow: '▲',
-          value: probabilities.up,
-          className: 'up',
-        },
-        {
-          key: 'down',
-          label: 'DOWN',
-          arrow: '▼',
-          value: probabilities.down,
-          className: 'down',
-        },
-        {
-          key: 'consolidation',
-          label: 'CONSOLIDATION',
-          arrow: '◆',
-          value: probabilities.consolidation,
-          className: 'flat',
-        },
+        { key: 'up',            label: 'UP',            arrow: '▲', value: probabilities.up,            className: 'up'   },
+        { key: 'down',          label: 'DOWN',          arrow: '▼', value: probabilities.down,          className: 'down' },
+        { key: 'consolidation', label: 'CONSOLIDATION', arrow: '◆', value: probabilities.consolidation, className: 'flat' },
       ];
 
       probs.innerHTML = outcomes.map(outcome => {
@@ -165,17 +156,10 @@ function paintPrediction(symbol, m, live) {
             <span class="probs__label ${outcome.className}">
               ${outcome.arrow} ${outcome.label}
             </span>
-
             <div class="bar">
-              <div
-                class="bar__fill bar__fill--${outcome.className}"
-                style="width:${percentage}%">
-              </div>
+              <div class="bar__fill bar__fill--${outcome.className}" style="width:${percentage}%"></div>
             </div>
-
-            <span class="probs__val">
-              ${value === null ? '—' : `${value}%`}
-            </span>
+            <span class="probs__val">${value === null ? '—' : `${value}%`}</span>
           </li>
         `;
       }).join('');
@@ -184,7 +168,6 @@ function paintPrediction(symbol, m, live) {
     }
   }
 }
-
 
 /* ---------- Trade setup card ---------- */
 
@@ -203,7 +186,6 @@ function paintTrade(symbol, m) {
   setText('setup-stop', level(symbol, t?.stopLoss ?? null));
   setText('setup-target', level(symbol, t?.takeProfit ?? null));
 
- 
   const rr =
     t?.riskReward ??
     (t && t.risk && t.reward !== null ? t.reward / t.risk : null);
@@ -217,7 +199,6 @@ function paintTrade(symbol, m) {
   setText('setup-risk', `Risk ${distance(symbol, t?.risk ?? null)}`);
   setText('setup-reward', `Reward ${distance(symbol, t?.reward ?? null)}`);
 
-  // Where each level came from
   const notes = $('setup-notes');
   if (notes) {
     const rows = [
@@ -230,28 +211,46 @@ function paintTrade(symbol, m) {
   }
 }
 
-function paintChart(symbol, m) {
+/* ---------- Chart (with timeframe switching) ---------- */
+
+let currentTimeframe = '1D';
+let currentMarket = null;
+
+function paintChart() {
   const svg = document.getElementById('price-chart');
   const lastDateEl = document.getElementById('chart-last-date');
+  const titleEl = document.getElementById('chart-title');
   if (!svg) return;
 
-  const candles = Array.isArray(m?.candles) ? m.candles : [];
+  const m = currentMarket;
+  const isH1 = currentTimeframe === '1H';
+  const candles = isH1
+    ? (Array.isArray(m?.candlesH1) ? m.candlesH1 : [])
+    : (Array.isArray(m?.candles) ? m.candles : []);
+
+  if (titleEl) {
+    titleEl.textContent = isH1
+      ? `Price, ${candles.length} hourly candles`
+      : `Price, ${candles.length} daily candles`;
+  }
+
   if (!candles.length) {
-    svg.innerHTML = '<text x="500" y="200" text-anchor="middle" fill="#8b95ad" font-size="14">No candle data</text>';
+    svg.innerHTML = `<text x="500" y="200" text-anchor="middle" fill="#8b95ad" font-size="14">No ${isH1 ? 'hourly' : 'daily'} data</text>`;
+    if (lastDateEl) lastDateEl.textContent = '';
     return;
   }
 
-  if (lastDateEl) lastDateEl.textContent = `Last session: ${candles[candles.length - 1].date}`;
+  if (lastDateEl) {
+    const last = candles[candles.length - 1];
+    lastDateEl.textContent = `Last: ${formatCandleLabel(last, currentTimeframe)}`;
+  }
 
-  const NS = 'http://www.w3.org/2000/svg';
   const W = 1000, H = 400;
   const PAD = { left: 70, right: 20, top: 20, bottom: 40 };
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
 
-  // Price range: candles + trade levels
   const t = m?.trade;
-  const closes = candles.map(c => c.close);
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
   const extras = [t?.entry, t?.stopLoss, t?.takeProfit].filter(v => typeof v === 'number' && !isNaN(v));
@@ -264,11 +263,10 @@ function paintChart(symbol, m) {
 
   const y = p => PAD.top + plotH - ((p - lo) / (hi - lo)) * plotH;
   const barW = plotW / candles.length;
-  const bodyW = barW * 0.55;
+  const bodyW = Math.max(barW * 0.55, 1);
 
   let html = '';
 
-  // --- Gridlines + y-axis labels (5 levels) ---
   for (let i = 0; i <= 5; i++) {
     const price = lo + (hi - lo) * (i / 5);
     const yPix = y(price);
@@ -276,23 +274,19 @@ function paintChart(symbol, m) {
     html += `<text x="${PAD.left - 8}" y="${yPix + 4}" text-anchor="end" fill="#8b95ad" font-size="11" font-family="'Space Mono', monospace">${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
   }
 
-  // --- Candles ---
   candles.forEach((c, i) => {
     const x = PAD.left + i * barW + barW / 2;
     const up = c.close >= c.open;
     const color = up ? '#22c55e' : '#ef4444';
 
-    // wick
     html += `<line x1="${x}" y1="${y(c.high)}" x2="${x}" y2="${y(c.low)}" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
 
-    // body
     const bodyTop = y(Math.max(c.open, c.close));
     const bodyBot = y(Math.min(c.open, c.close));
     const bodyH = Math.max(bodyBot - bodyTop, 1);
     html += `<rect x="${x - bodyW / 2}" y="${bodyTop}" width="${bodyW}" height="${bodyH}" fill="${color}"/>`;
   });
 
-  // --- Trade level lines ---
   const levels = [
     { price: t?.takeProfit, color: '#22c55e', label: 'TP' },
     { price: t?.entry,      color: '#818cf8', label: 'Entry' },
@@ -305,16 +299,35 @@ function paintChart(symbol, m) {
     html += `<text x="${W - PAD.right - 4}" y="${yPix - 4}" text-anchor="end" fill="${l.color}" font-size="11" font-weight="600" font-family="'Space Mono', monospace">${l.label} ${l.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</text>`;
   });
 
-  // --- X-axis: 5 date labels, evenly spaced ---
   for (let i = 0; i <= 4; i++) {
     const idx = Math.floor((candles.length - 1) * (i / 4));
     const c = candles[idx];
     const x = PAD.left + idx * barW + barW / 2;
-    html += `<text x="${x}" y="${H - PAD.bottom + 18}" text-anchor="middle" fill="#8b95ad" font-size="11" font-family="'Space Mono', monospace">${c.date}</text>`;
+    html += `<text x="${x}" y="${H - PAD.bottom + 18}" text-anchor="middle" fill="#8b95ad" font-size="11" font-family="'Space Mono', monospace">${formatCandleLabel(c, currentTimeframe)}</text>`;
   }
 
   svg.innerHTML = html;
 }
+
+function bindTimeframeButtons() {
+  const buttons = document.querySelectorAll('.tf .chip[data-timeframe]');
+  buttons.forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => {
+        b.classList.remove('is-active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('is-active');
+      btn.setAttribute('aria-selected', 'true');
+      currentTimeframe = btn.dataset.timeframe || '1D';
+      paintChart();
+    });
+  });
+}
+
+/* ---------- SMC signals ---------- */
 
 function paintSmc(symbol, m) {
   const grid = $('smc-grid');
@@ -329,7 +342,6 @@ function paintSmc(symbol, m) {
     return;
   }
 
- 
   const gridItems = [];
   const wideItems = [];
 
@@ -368,20 +380,22 @@ function paintSmc(symbol, m) {
 export async function initMarketPage() {
   const symbol = selectedSymbol();
 
-  // show the right name straight away, then fill in the live data
   setText('mk-symbol', symbol);
   setText('mk-sub', `${DESCRIPTIONS[symbol]} · Daily`);
 
   try {
     const live = await fetchLatestPredictions();
-    if (!$('pred-title') || selectedSymbol() !== symbol) return; 
+    if (!$('pred-title') || selectedSymbol() !== symbol) return;
 
     const m = live?.bySymbol[symbol] ?? null;
+    currentMarket = m;
+
     paintHeader(symbol, m);
     paintPrediction(symbol, m, live);
     paintTrade(symbol, m);
     paintSmc(symbol, m);
-    paintChart(symbol, m);
+    paintChart();
+    bindTimeframeButtons();
   } catch (err) {
     console.error('Could not load the market', err);
     if (!$('pred-title')) return;

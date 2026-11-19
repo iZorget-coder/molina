@@ -159,14 +159,15 @@ function normalise(docId, data, olderPredictions) {
   close,
   closeDate,
   trade: normaliseTrade(p?.trade),
-  signals: Array.isArray(p?.signals) ? p.signals : [], 
+  signals: Array.isArray(p?.signals) ? p.signals : [],
+  candles: Array.isArray(p?.candles) ? p.candles : [],
+  candlesH1: Array.isArray(p?.candlesH1) ? p.candlesH1 : [],
   change,
   price: formatPrice(close),
   changeText: formatChange(change),
   label: hasForecast
     ? `${direction.arrow} ${direction.label}${confidence !== null ? ` ${confidence}%` : ''}`
     : 'No forecast',
-    candles: Array.isArray(p?.candles) ? p.candles : [],
 };
   }
 

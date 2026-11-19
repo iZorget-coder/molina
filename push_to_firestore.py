@@ -16,26 +16,30 @@ db = firestore.client()
 with open("predictions.json", "r") as f:
     predictions = json.load(f)
 
-# Map symbol → daily CSV for candle history
-CANDLE_FILES = {
+DAILY_FILES = {
     "SPX":    "SP500_1d_data.csv",
     "NDX":    "NASDAQ_1d_data.csv",
     "DJI":    "DOW_1d_data.csv",
     "XAUUSD": "XAUUSD_1d_data.csv",
 }
 
-def last_candles(symbol, n=100):
-    """Return the last `n` daily OHLC bars for a market as a list of dicts."""
-    path = CANDLE_FILES.get(symbol)
-    if not path or not os.path.exists(path):
-        print(f"[warn] No CSV found for {symbol} ({path})")
-        return []
+HOURLY_FILES = {
+    "SPX":    "SP500_index_H1.csv",
+    "NDX":    "NASDAQ100_index_H1.csv",
+    "DJI":    "DOW_index_H1.csv",
+    "XAUUSD": "XAUUSD_H1.csv",
+}
 
+def daily_candles(symbol, n=100):
+    path = DAILY_FILES.get(symbol)
+    if not path or not os.path.exists(path):
+        print(f"[warn] No daily CSV for {symbol} ({path})")
+        return []
     df = pd.read_csv(path).tail(n)
-    candles = []
+    out = []
     for _, row in df.iterrows():
         try:
-            candles.append({
+            out.append({
                 "date":  str(row["Date"]),
                 "open":  float(row["Open"]),
                 "high":  float(row["High"]),
@@ -43,14 +47,33 @@ def last_candles(symbol, n=100):
                 "close": float(row["Close"]),
             })
         except (KeyError, ValueError) as e:
-            print(f"[warn] Skipping malformed row in {path}: {e}")
-    return candles
+            print(f"[warn] {path} bad row: {e}")
+    return out
 
-# Attach candle history to each market's prediction
+def hourly_candles(symbol, n=200):
+    path = HOURLY_FILES.get(symbol)
+    if not path or not os.path.exists(path):
+        print(f"[warn] No hourly CSV for {symbol} ({path})")
+        return []
+    df = pd.read_csv(path).tail(n)
+    out = []
+    for _, row in df.iterrows():
+        try:
+            out.append({
+                "time":  str(row["timestamp"]),
+                "open":  float(row["open"]),
+                "high":  float(row["high"]),
+                "low":   float(row["low"]),
+                "close": float(row["close"]),
+            })
+        except (KeyError, ValueError) as e:
+            print(f"[warn] {path} bad row: {e}")
+    return out
+
 for symbol in predictions:
-    predictions[symbol]["candles"] = last_candles(symbol, 100)
+    predictions[symbol]["candles"] = daily_candles(symbol, 100)
+    predictions[symbol]["candlesH1"] = hourly_candles(symbol, 200)
 
-# Use the data date from the predictions (not the run date)
 data_date = next(iter(predictions.values()))["date"]
 
 doc_ref = db.collection("daily_predictions").document(data_date)
@@ -59,5 +82,6 @@ doc_ref.set({
     "generated_at": firestore.SERVER_TIMESTAMP,
 })
 
-print(f"Successfully wrote daily_predictions/{data_date}")
-print(json.dumps(predictions, indent=2))
+print(f"Wrote daily_predictions/{data_date}")
+print(f"Daily candles: {[len(v.get('candles', [])) for v in predictions.values()]}")
+print(f"Hourly candles: {[len(v.get('candlesH1', [])) for v in predictions.values()]}")
