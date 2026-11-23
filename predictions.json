@@ -1,11 +1,11 @@
 {
   "SPX": {
     "bias": "UP",
-    "confidence": 0.44373895839909383,
+    "confidence": 0.4437389583990937,
     "probabilities": {
-      "UP": 0.44373895839909383,
+      "UP": 0.4437389583990937,
       "DOWN": 0.3163387521287793,
-      "CONSOLIDATION": 0.2399222894721279
+      "CONSOLIDATION": 0.23992228947212793
     },
     "signals": [
       "Bull Breaker",
@@ -33,7 +33,7 @@
     "confidence": 0.4117368382848987,
     "probabilities": {
       "UP": 0.4117368382848987,
-      "DOWN": 0.3293058463503892,
+      "DOWN": 0.3293058463503893,
       "CONSOLIDATION": 0.2589573153647124
     },
     "signals": [
