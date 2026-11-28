@@ -1,69 +1,11 @@
 {
   "SPX": {
     "bias": "UP",
-    "confidence": 0.37077329544248677,
+    "confidence": 0.34700322261162886,
     "probabilities": {
-      "UP": 0.37077329544248677,
-      "DOWN": 0.3578498303485847,
-      "CONSOLIDATION": 0.2713768742089288
-    },
-    "signals": [
-      "Bull Breaker",
-      "Bull IFVG",
-      "BOS Bear"
-    ],
-    "close": 7182.77978515625,
-    "date": "2026-11-25",
-    "trade": {
-      "action": "LONG",
-      "entry": 7308.95,
-      "stop_loss": 7027.79,
-      "take_profit": 7816.7,
-      "risk": 281.16,
-      "reward": 507.75,
-      "risk_reward": 1.81,
-      "conviction": "Low",
-      "entry_type": "H1 OB zone, prob=0.73, New York 16:00 UTC",
-      "stop_source": "ATR 1.5x fallback",
-      "target_source": "Swing High 7816.70 (DOL rank 3)"
-    }
-  },
-  "NDX": {
-    "bias": "DOWN",
-    "confidence": 0.40820089524282893,
-    "probabilities": {
-      "UP": 0.35262215004784586,
-      "DOWN": 0.40820089524282893,
-      "CONSOLIDATION": 0.23917695470932557
-    },
-    "signals": [
-      "Bull Breaker",
-      "Bull IFVG",
-      "BOS Bear"
-    ],
-    "close": 23585.80078125,
-    "date": "2026-11-25",
-    "trade": {
-      "action": "SHORT",
-      "entry": 27164.55,
-      "stop_loss": 28872.52,
-      "take_profit": 22841.42,
-      "risk": 1707.97,
-      "reward": 4323.13,
-      "risk_reward": 2.53,
-      "conviction": "Medium",
-      "entry_type": "H1 BREAKER zone, prob=0.68, New York 18:00 UTC",
-      "stop_source": "ATR 1.5x fallback",
-      "target_source": "Swing Low 22841.42 (DOL rank 3)"
-    }
-  },
-  "DJI": {
-    "bias": "DOWN",
-    "confidence": 0.37638490856782214,
-    "probabilities": {
-      "UP": 0.3406395030502183,
-      "DOWN": 0.37638490856782214,
-      "CONSOLIDATION": 0.28297558838196013
+      "UP": 0.34700322261162886,
+      "DOWN": 0.32093049190520767,
+      "CONSOLIDATION": 0.33206628548316325
     },
     "signals": [
       "Bull Breaker",
@@ -71,49 +13,107 @@
       "Bear IFVG",
       "BOS Bear"
     ],
-    "close": 50182.94921875,
-    "date": "2026-11-25",
+    "close": 7297.490234375,
+    "date": "2026-11-27",
+    "trade": {
+      "action": "LONG",
+      "entry": 7308.95,
+      "stop_loss": 7051.04,
+      "take_profit": 7816.7,
+      "risk": 257.91,
+      "reward": 507.75,
+      "risk_reward": 1.97,
+      "conviction": "Low",
+      "entry_type": "H1 OB zone, prob=0.92, New York 16:00 UTC",
+      "stop_source": "ATR 1.5x fallback",
+      "target_source": "Swing High 7816.70 (DOL rank 3)"
+    }
+  },
+  "NDX": {
+    "bias": "DOWN",
+    "confidence": 0.4054087182454699,
+    "probabilities": {
+      "UP": 0.24803985035508658,
+      "DOWN": 0.4054087182454699,
+      "CONSOLIDATION": 0.346551431399444
+    },
+    "signals": [
+      "Bull IFVG",
+      "Bear IFVG",
+      "BOS Bear"
+    ],
+    "close": 24129.5,
+    "date": "2026-11-27",
+    "trade": {
+      "action": "SHORT",
+      "entry": 27164.55,
+      "stop_loss": 28736.72,
+      "take_profit": 22841.42,
+      "risk": 1572.17,
+      "reward": 4323.13,
+      "risk_reward": 2.75,
+      "conviction": "Medium",
+      "entry_type": "H1 IFVG zone, prob=0.88, New York 16:00 UTC",
+      "stop_source": "ATR 1.5x fallback",
+      "target_source": "Swing Low 22841.42 (DOL rank 3)"
+    }
+  },
+  "DJI": {
+    "bias": "DOWN",
+    "confidence": 0.34230496143462397,
+    "probabilities": {
+      "UP": 0.32268925015029415,
+      "DOWN": 0.34230496143462397,
+      "CONSOLIDATION": 0.3350057884150821
+    },
+    "signals": [
+      "Bull Breaker",
+      "Bear IFVG",
+      "Sweep Low"
+    ],
+    "close": 50774.94140625,
+    "date": "2026-11-27",
     "trade": {
       "action": "SHORT",
       "entry": 50365.34,
-      "stop_loss": 51195.32,
-      "take_profit": 45057.28,
-      "risk": 829.98,
-      "reward": 5308.06,
-      "risk_reward": 6.4,
+      "stop_loss": 50937.78,
+      "take_profit": 49235.74,
+      "risk": 572.44,
+      "reward": 1129.6,
+      "risk_reward": 1.97,
       "conviction": "Low",
-      "entry_type": "H1 IMBALANCE zone, prob=0.63, New York 15:00 UTC",
-      "stop_source": "fvg zone @ 0.60",
-      "target_source": "Swing Low 45057.28 (DOL rank 3)"
+      "entry_type": "H1 IMBALANCE zone, prob=0.71, New York 15:00 UTC",
+      "stop_source": "ifvg zone @ 0.64",
+      "target_source": "Swing Low 49235.74 (DOL rank 3)"
     }
   },
   "XAUUSD": {
-    "bias": "UP",
-    "confidence": 0.5273683594552123,
+    "bias": "DOWN",
+    "confidence": 0.3453295920162436,
     "probabilities": {
-      "UP": 0.5273683594552123,
-      "DOWN": 0.22583731902914278,
-      "CONSOLIDATION": 0.24679432151564534
+      "UP": 0.3146265822439764,
+      "DOWN": 0.3453295920162436,
+      "CONSOLIDATION": 0.34004382573977965
     },
     "signals": [
       "Bull Breaker",
       "Bull IFVG",
       "BOS Bear"
     ],
-    "close": 3535.800048828125,
-    "date": "2026-11-25",
+    "close": 3639.60009765625,
+    "date": "2026-11-27",
     "trade": {
-      "action": "LONG",
-      "entry": 3756.65,
-      "stop_loss": 3574.81,
-      "take_profit": 4148.65,
-      "risk": 181.84,
-      "reward": 392.0,
-      "risk_reward": 2.16,
-      "conviction": "Medium",
-      "entry_type": "H1 IFVG zone, prob=0.37, Asia (late) 23:00 UTC",
+      "action": "SHORT",
+      "entry": 3764.54,
+      "stop_loss": 3952.62,
+      "take_profit": 3388.38,
+      "risk": 188.08,
+      "reward": 376.16,
+      "risk_reward": 2.0,
+      "conviction": "Low",
+      "entry_type": "H1 FVG zone, prob=0.60, Asia 02:00 UTC",
       "stop_source": "ATR 1.5x fallback",
-      "target_source": "Swing High 4148.65 (DOL rank 3)"
+      "target_source": "2R fallback"
     }
   }
 }
